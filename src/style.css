@@ -1,0 +1,490 @@
+@import url("https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Space+Grotesk:wght@500;700&display=swap");
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #1a1520;
+  font-family: "Space Grotesk", sans-serif;
+  color: #f4efe6;
+}
+
+#game {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: crosshair;
+}
+
+#hud {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 10;
+  padding: 1.25rem 1.5rem;
+}
+
+#title {
+  font-family: "Press Start 2P", monospace;
+  font-size: clamp(0.7rem, 1.6vw, 1rem);
+  letter-spacing: 0.08em;
+  color: #ff6b35;
+  text-shadow: 3px 3px 0 #2a1810;
+}
+
+#health-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 1rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+#health-bar {
+  width: min(220px, 40vw);
+  height: 18px;
+  background: #2a2218;
+  border: 3px solid #f4efe6;
+  overflow: hidden;
+}
+
+#health-fill {
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, #c0392b, #e74c3c);
+  transition: width 0.2s ease;
+}
+
+#weapon {
+  margin-top: 0.75rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #a8e06c;
+}
+
+#score {
+  margin-top: 0.55rem;
+  font-family: "Press Start 2P", monospace;
+  font-size: 0.65rem;
+  color: #ffe08a;
+  letter-spacing: 0.04em;
+}
+
+#combo {
+  margin-top: 0.45rem;
+  font-family: "Press Start 2P", monospace;
+  font-size: 0.85rem;
+  color: #ff6b35;
+  text-shadow: 3px 3px 0 #2a1810;
+  transform-origin: left center;
+}
+
+#combo.pop {
+  animation: combo-pop 0.22s ease-out;
+}
+
+@keyframes combo-pop {
+  0% {
+    transform: scale(0.7);
+  }
+  60% {
+    transform: scale(1.25);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+#hurt-vignette {
+  position: fixed;
+  inset: 0;
+  z-index: 15;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(ellipse at center, transparent 35%, rgba(180, 20, 20, 0.55) 100%);
+  transition: opacity 0.12s ease;
+}
+
+#hurt-vignette.show {
+  opacity: 1;
+}
+
+#crosshair {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  width: 22px;
+  height: 22px;
+  transform: translate(-50%, -50%);
+  z-index: 12;
+  pointer-events: none;
+  opacity: 0.9;
+}
+
+#crosshair .ch-h,
+#crosshair .ch-v {
+  position: absolute;
+  background: #f4efe6;
+  box-shadow: 0 0 0 1px rgba(26, 16, 12, 0.85);
+}
+
+#crosshair .ch-h {
+  left: 0;
+  top: 50%;
+  width: 100%;
+  height: 2px;
+  transform: translateY(-50%);
+}
+
+#crosshair .ch-v {
+  top: 0;
+  left: 50%;
+  width: 2px;
+  height: 100%;
+  transform: translateX(-50%);
+}
+
+#crosshair .ch-dot {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 3px;
+  height: 3px;
+  margin: -1.5px 0 0 -1.5px;
+  background: #ff6b35;
+  box-shadow: 0 0 0 1px #1a100c;
+}
+
+#message {
+  margin-top: 0.75rem;
+  min-height: 1.2em;
+  font-size: 0.9rem;
+  color: #ffe08a;
+  text-shadow: 0 1px 0 #000;
+}
+
+#hint {
+  position: absolute;
+  left: 1.5rem;
+  bottom: 1.25rem;
+  font-size: 0.75rem;
+  opacity: 0.7;
+}
+
+#hotbar {
+  position: absolute;
+  left: 50%;
+  bottom: 1.4rem;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 0.4rem;
+  pointer-events: none;
+}
+
+.hotbar-slot {
+  width: 84px;
+  min-height: 58px;
+  padding: 0.35rem 0.4rem;
+  background: rgba(26, 21, 32, 0.82);
+  border: 3px solid #6d6358;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  align-items: flex-start;
+}
+
+.hotbar-slot.active {
+  border-color: #ff6b35;
+  box-shadow: 0 0 0 2px rgba(255, 107, 53, 0.35);
+}
+
+.hotbar-slot.locked {
+  opacity: 0.45;
+}
+
+.slot-key {
+  font-family: "Press Start 2P", monospace;
+  font-size: 0.55rem;
+  color: #ffe08a;
+}
+
+.slot-name {
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+#inventory {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 8, 12, 0.72);
+  pointer-events: auto;
+}
+
+#inventory.hidden {
+  display: none !important;
+}
+
+.inv-panel {
+  width: min(420px, 92vw);
+  background: #241c18;
+  border: 4px solid #f4efe6;
+  padding: 1.25rem 1.35rem 1.5rem;
+  box-shadow: 8px 8px 0 #1a100c;
+}
+
+.inv-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.inv-header h2 {
+  font-family: "Press Start 2P", monospace;
+  font-size: 0.85rem;
+  color: #ff6b35;
+}
+
+#inventory-close {
+  font-family: "Space Grotesk", sans-serif;
+  font-weight: 700;
+  font-size: 0.8rem;
+  padding: 0.4rem 0.7rem;
+  background: #3a2e28;
+  color: #f4efe6;
+  border: 2px solid #f4efe6;
+  cursor: pointer;
+}
+
+.inv-blurb {
+  font-size: 0.85rem;
+  opacity: 0.75;
+  margin-bottom: 1rem;
+}
+
+#inventory-slots {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.inv-item {
+  display: grid;
+  grid-template-columns: 2rem 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 0.75rem;
+  row-gap: 0.15rem;
+  text-align: left;
+  padding: 0.7rem 0.8rem;
+  background: #322820;
+  border: 2px solid #6d6358;
+  color: #f4efe6;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.inv-item:hover:not(.locked) {
+  border-color: #ff6b35;
+}
+
+.inv-item.equipped {
+  border-color: #a8e06c;
+}
+
+.inv-item.locked {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.inv-key {
+  grid-row: 1 / span 2;
+  align-self: center;
+  font-family: "Press Start 2P", monospace;
+  font-size: 0.7rem;
+  color: #ffe08a;
+}
+
+.inv-label {
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.inv-meta {
+  font-size: 0.75rem;
+  opacity: 0.65;
+}
+
+#overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  background: #120c0a;
+  overflow: hidden;
+}
+
+#overlay.splash .splash-art {
+  position: absolute;
+  inset: 0;
+}
+
+#overlay.splash .splash-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 35%;
+  display: block;
+}
+
+#overlay.splash .splash-shade {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(12, 8, 6, 0.15) 0%, rgba(12, 8, 6, 0.55) 45%, rgba(12, 8, 6, 0.92) 78%, #120c0a 100%),
+    radial-gradient(ellipse at 50% 20%, transparent 20%, rgba(0, 0, 0, 0.45) 100%);
+}
+
+#overlay.splash .splash-copy {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.55rem;
+  padding: 1.5rem 1.5rem 2.25rem;
+  justify-self: center;
+  align-self: end;
+  max-width: 42rem;
+}
+
+.splash-kicker {
+  font-family: "Press Start 2P", monospace;
+  font-size: clamp(0.45rem, 1.4vw, 0.62rem);
+  color: #ffe08a;
+  letter-spacing: 0.04em;
+  line-height: 1.6;
+  text-shadow: 2px 2px 0 #1a100c;
+}
+
+#overlay h1 {
+  font-family: "Press Start 2P", monospace;
+  font-size: clamp(1.6rem, 6vw, 3.2rem);
+  color: #ff6b35;
+  text-shadow: 5px 5px 0 #2a1010, 0 0 24px rgba(255, 80, 30, 0.45);
+  line-height: 1.25;
+}
+
+.splash-tag {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #f4efe6;
+  opacity: 0.95;
+}
+
+.splash-blurb {
+  max-width: 34rem;
+  font-size: 0.95rem;
+  opacity: 0.8;
+  line-height: 1.45;
+}
+
+#overlay .sub {
+  font-size: 0.8rem;
+  opacity: 0.6;
+}
+
+#start,
+#restart {
+  margin-top: 0.5rem;
+  pointer-events: auto;
+  font-family: "Press Start 2P", monospace;
+  font-size: clamp(0.55rem, 1.5vw, 0.7rem);
+  padding: 1rem 1.3rem;
+  background: #ff6b35;
+  color: #1a1520;
+  border: 4px solid #f4efe6;
+  cursor: pointer;
+  transition: transform 0.12s ease, background 0.12s ease;
+}
+
+#start:hover,
+#restart:hover {
+  background: #ff8a5b;
+  transform: translateY(-2px);
+}
+
+#gameover {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(ellipse at center, rgba(80, 10, 10, 0.55), rgba(8, 4, 4, 0.92));
+  pointer-events: auto;
+}
+
+#gameover.hidden {
+  display: none !important;
+}
+
+.gameover-panel {
+  text-align: center;
+  padding: 2rem 1.75rem;
+  border: 4px solid #f4efe6;
+  background: #1a100c;
+  box-shadow: 10px 10px 0 #000;
+  max-width: 26rem;
+  width: min(92vw, 26rem);
+}
+
+.go-kicker {
+  font-family: "Press Start 2P", monospace;
+  font-size: 0.5rem;
+  color: #e74c3c;
+  letter-spacing: 0.06em;
+  margin-bottom: 0.75rem;
+  line-height: 1.6;
+}
+
+#gameover h2 {
+  font-family: "Press Start 2P", monospace;
+  font-size: clamp(1.2rem, 4vw, 1.8rem);
+  color: #ff6b35;
+  text-shadow: 4px 4px 0 #2a1010;
+  margin-bottom: 0.85rem;
+}
+
+#go-score {
+  font-family: "Press Start 2P", monospace;
+  font-size: 0.75rem;
+  color: #ffe08a;
+  margin-bottom: 0.75rem;
+}
+
+.go-blurb {
+  opacity: 0.8;
+  margin-bottom: 0.5rem;
+  font-size: 0.95rem;
+}
+
+.hidden {
+  display: none !important;
+}

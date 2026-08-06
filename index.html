@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>6-7 MAN</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div id="hud" class="hidden">
+      <div id="title">6-7 MAN</div>
+      <div id="health-wrap">
+        <span>HP</span>
+        <div id="health-bar"><div id="health-fill"></div></div>
+        <span id="health-text">100</span>
+      </div>
+      <div id="weapon">Weapon: Fists</div>
+      <div id="score">SCORE 0</div>
+      <div id="combo" class="hidden">2x COMBO</div>
+      <div id="message"></div>
+      <div id="hotbar">
+        <div class="hotbar-slot active" data-slot="0">
+          <span class="slot-key">1</span>
+          <span class="slot-name">Fists</span>
+        </div>
+        <div class="hotbar-slot locked" data-slot="1">
+          <span class="slot-key">2</span>
+          <span class="slot-name">???</span>
+        </div>
+        <div class="hotbar-slot locked" data-slot="2">
+          <span class="slot-key">3</span>
+          <span class="slot-name">???</span>
+        </div>
+        <div class="hotbar-slot locked" data-slot="3">
+          <span class="slot-key">4</span>
+          <span class="slot-name">—</span>
+        </div>
+      </div>
+      <div id="hint">WASD move · Aim with look · 1-4 hotbar · I inventory · E crate · Click attack</div>
+    </div>
+
+    <div id="crosshair" class="hidden" aria-hidden="true">
+      <span class="ch-h"></span>
+      <span class="ch-v"></span>
+      <span class="ch-dot"></span>
+    </div>
+    <div id="hurt-vignette"></div>
+
+    <div id="inventory" class="hidden">
+      <div class="inv-panel">
+        <div class="inv-header">
+          <h2>Inventory</h2>
+          <button type="button" id="inventory-close">Close (I)</button>
+        </div>
+        <p class="inv-blurb">Equip vegetable weapons. Asparagus Spear is two-handed.</p>
+        <div id="inventory-slots"></div>
+      </div>
+    </div>
+
+    <div id="overlay" class="splash">
+      <div class="splash-art">
+        <img src="/splash-67-man.png" alt="6-7 Man battles demon desserts with vegetable weapons" />
+        <div class="splash-shade"></div>
+      </div>
+      <div class="splash-copy">
+        <p class="splash-kicker">HE IS SIX FOOT SEVEN. THE DESSERTS ARE DEMONS.</p>
+        <h1>6-7 MAN</h1>
+        <p class="splash-tag">Veggies vs. Demon Desserts</p>
+        <p class="splash-blurb">
+          Bald. Tall. Pot belly out. Armed with carrot and asparagus against cake, ice cream, and cookie hellspawn.
+        </p>
+        <button id="start" type="button">RIP AND TEAR (INTO CAKE)</button>
+        <p class="sub">Click · WASD · Aim with mouse · Smash desserts</p>
+      </div>
+    </div>
+
+    <div id="gameover" class="hidden">
+      <div class="gameover-panel">
+        <p class="go-kicker">THE DESSERTS WON THIS ROUND</p>
+        <h2>GAME OVER</h2>
+        <p id="go-score">SCORE 0</p>
+        <p class="go-blurb">6-7 Man got frosted. Shake it off and hop back in.</p>
+        <button id="restart" type="button">TRY AGAIN</button>
+      </div>
+    </div>
+
+    <canvas id="game"></canvas>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
