@@ -370,60 +370,84 @@ body {
   pointer-events: none;
 }
 
-#joy-zone {
+#joy-zone,
+#look-zone {
   position: absolute;
-  left: 0;
-  bottom: 100px;
-  width: 46%;
-  height: 42%;
+  bottom: 96px;
+  width: 44%;
+  height: 44%;
   pointer-events: auto;
   touch-action: none;
 }
 
-#joy-base {
+#joy-zone {
+  left: 0;
+}
+
+#look-zone {
+  right: 0;
+}
+
+#joy-base,
+#look-base {
   position: absolute;
-  left: 28px;
-  bottom: 28px;
-  width: 120px;
-  height: 120px;
+  bottom: 24px;
+  width: 118px;
+  height: 118px;
   border-radius: 50%;
   border: 3px solid rgba(244, 239, 230, 0.45);
   background: rgba(26, 16, 12, 0.35);
 }
 
-#joy-knob {
+#joy-base {
+  left: 22px;
+}
+
+#look-base {
+  right: 22px;
+  border-color: rgba(120, 180, 255, 0.5);
+}
+
+#joy-knob,
+#look-knob {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 54px;
-  height: 54px;
-  margin: -27px 0 0 -27px;
+  width: 52px;
+  height: 52px;
+  margin: -26px 0 0 -26px;
   border-radius: 50%;
-  background: rgba(255, 107, 53, 0.85);
   border: 3px solid #f4efe6;
   box-shadow: 0 2px 0 #1a100c;
   will-change: transform;
 }
 
+#joy-knob {
+  background: rgba(255, 107, 53, 0.9);
+}
+
+#look-knob {
+  background: rgba(90, 160, 255, 0.9);
+}
+
 #mobile-actions {
   position: absolute;
-  right: 16px;
-  bottom: 110px;
+  right: 18px;
+  bottom: 240px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  align-items: flex-end;
+  gap: 12px;
   pointer-events: auto;
   touch-action: none;
 }
 
 #btn-shoot,
+#btn-rush,
 #btn-use {
-  width: 84px;
-  height: 84px;
   border-radius: 50%;
   border: 4px solid #f4efe6;
   font-family: "Press Start 2P", monospace;
-  font-size: 0.55rem;
   color: #1a100c;
   cursor: pointer;
   box-shadow: 0 4px 0 #1a100c;
@@ -431,19 +455,27 @@ body {
 
 #btn-shoot {
   background: #ff6b35;
-  width: 100px;
-  height: 100px;
-  font-size: 0.65rem;
+  width: 92px;
+  height: 92px;
+  font-size: 0.62rem;
+}
+
+#btn-rush {
+  background: #ff4455;
+  width: 78px;
+  height: 78px;
+  font-size: 0.5rem;
 }
 
 #btn-use {
   background: #ffe08a;
-  width: 70px;
-  height: 70px;
-  align-self: flex-end;
+  width: 64px;
+  height: 64px;
+  font-size: 0.5rem;
 }
 
 #btn-shoot:active,
+#btn-rush:active,
 #btn-use:active {
   transform: translateY(2px);
   box-shadow: 0 2px 0 #1a100c;

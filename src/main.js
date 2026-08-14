@@ -39,7 +39,10 @@ const playAgainBtn = document.getElementById("play-again");
 const mobileEl = document.getElementById("mobile");
 const joyZone = document.getElementById("joy-zone");
 const joyKnob = document.getElementById("joy-knob");
+const lookZone = document.getElementById("look-zone");
+const lookKnob = document.getElementById("look-knob");
 const btnShoot = document.getElementById("btn-shoot");
+const btnRush = document.getElementById("btn-rush");
 const btnUse = document.getElementById("btn-use");
 
 const isTouchUI =
@@ -128,11 +131,14 @@ const input = {
   run: false,
   joyX: 0,
   joyY: 0,
+  lookX: 0,
+  lookY: 0,
   firing: false,
+  rush: false,
 };
 
 const joy = { active: false, pointerId: null, cx: 0, cy: 0 };
-const lookTouch = { id: null, lastX: 0 };
+const look = { active: false, pointerId: null, cx: 0, cy: 0 };
 
 function showMessage(text, dur = 2) {
   messageEl.textContent = text;
@@ -521,82 +527,99 @@ function clearInput() {
     if (typeof input[k] === "boolean") input[k] = false;
     if (typeof input[k] === "number") input[k] = 0;
   });
-  input.joyX = 0;
-  input.joyY = 0;
-  input.firing = false;
 }
 
-function setJoyKnob(nx, ny) {
-  const max = 36;
-  joyKnob.style.transform = `translate(${nx * max}px, ${ny * max}px)`;
+function setKnob(el, nx, ny) {
+  el.style.transform = `translate(${nx * 34}px, ${ny * 34}px)`;
 }
 
-function onJoyStart(e) {
-  if (!state.started || !state.alive) return;
-  e.preventDefault();
-  const t = e.changedTouches ? e.changedTouches[0] : e;
-  const base = document.getElementById("joy-base").getBoundingClientRect();
-  joy.active = true;
-  joy.pointerId = t.identifier ?? "mouse";
-  joy.cx = base.left + base.width / 2;
-  joy.cy = base.top + base.height / 2;
-  onJoyMove(e);
-}
-
-function onJoyMove(e) {
-  if (!joy.active) return;
-  e.preventDefault();
-  const touches = e.changedTouches || [e];
-  for (const t of touches) {
-    if ((t.identifier ?? "mouse") !== joy.pointerId && joy.pointerId !== "mouse") continue;
-    const dx = t.clientX - joy.cx;
-    const dy = t.clientY - joy.cy;
-    const len = Math.hypot(dx, dy) || 1;
-    const max = 48;
-    const clamped = Math.min(1, len / max);
-    input.joyX = (dx / len) * clamped;
-    input.joyY = (dy / len) * clamped;
-    setJoyKnob(input.joyX, input.joyY);
+function bindStick(zone, knob, stick, onAxis) {
+  function move(e) {
+    if (!stick.active) return;
+    e.preventDefault();
+    for (const t of e.changedTouches) {
+      if (t.identifier !== stick.pointerId) continue;
+      const dx = t.clientX - stick.cx;
+      const dy = t.clientY - stick.cy;
+      const len = Math.hypot(dx, dy) || 1;
+      const clamped = Math.min(1, len / 52);
+      const nx = (dx / len) * clamped;
+      const ny = (dy / len) * clamped;
+      onAxis(nx, ny);
+      setKnob(knob, nx, ny);
+    }
   }
-}
-
-function onJoyEnd(e) {
-  if (!joy.active) return;
-  const touches = e.changedTouches;
-  if (touches) {
+  function start(e) {
+    if (!state.started || !state.alive) return;
+    e.preventDefault();
+    const t = e.changedTouches[0];
+    const base = zone.querySelector("[id$='-base']").getBoundingClientRect();
+    stick.active = true;
+    stick.pointerId = t.identifier;
+    stick.cx = base.left + base.width / 2;
+    stick.cy = base.top + base.height / 2;
+    move(e);
+  }
+  function end(e) {
+    if (!stick.active) return;
     let match = false;
-    for (const t of touches) {
-      if (t.identifier === joy.pointerId) match = true;
+    for (const t of e.changedTouches) {
+      if (t.identifier === stick.pointerId) match = true;
     }
     if (!match) return;
+    stick.active = false;
+    stick.pointerId = null;
+    onAxis(0, 0);
+    setKnob(knob, 0, 0);
   }
-  joy.active = false;
-  joy.pointerId = null;
-  input.joyX = 0;
-  input.joyY = 0;
-  setJoyKnob(0, 0);
+  zone.addEventListener("touchstart", start, { passive: false });
+  zone.addEventListener("touchmove", move, { passive: false });
+  zone.addEventListener("touchend", end, { passive: false });
+  zone.addEventListener("touchcancel", end, { passive: false });
 }
 
-joyZone.addEventListener("touchstart", onJoyStart, { passive: false });
-joyZone.addEventListener("touchmove", onJoyMove, { passive: false });
-joyZone.addEventListener("touchend", onJoyEnd, { passive: false });
-joyZone.addEventListener("touchcancel", onJoyEnd, { passive: false });
+bindStick(joyZone, joyKnob, joy, (nx, ny) => {
+  input.joyX = nx;
+  input.joyY = ny;
+});
+bindStick(lookZone, lookKnob, look, (nx, ny) => {
+  input.lookX = nx;
+  input.lookY = ny;
+});
 
-btnShoot.addEventListener(
-  "touchstart",
-  (e) => {
-    e.preventDefault();
+function holdButton(btn, onDown, onUp) {
+  btn.addEventListener(
+    "touchstart",
+    (e) => {
+      e.preventDefault();
+      onDown();
+    },
+    { passive: false }
+  );
+  btn.addEventListener("touchend", onUp);
+  btn.addEventListener("touchcancel", onUp);
+}
+
+holdButton(
+  btnShoot,
+  () => {
     input.firing = true;
     fire();
   },
-  { passive: false }
+  () => {
+    input.firing = false;
+  }
 );
-btnShoot.addEventListener("touchend", () => {
-  input.firing = false;
-});
-btnShoot.addEventListener("touchcancel", () => {
-  input.firing = false;
-});
+holdButton(
+  btnRush,
+  () => {
+    input.rush = true;
+    fire();
+  },
+  () => {
+    input.rush = false;
+  }
+);
 btnUse.addEventListener(
   "touchstart",
   (e) => {
@@ -606,36 +629,36 @@ btnUse.addEventListener(
   { passive: false }
 );
 
-// Look / turn: drag on right half of screen (not on buttons)
-function onLookStart(e) {
-  if (!state.started || !state.alive || !isTouchUI) return;
-  const t = e.changedTouches[0];
-  if (t.clientX < window.innerWidth * 0.45) return;
-  if (e.target.closest("#mobile-actions") || e.target.closest("#joy-zone")) return;
-  lookTouch.id = t.identifier;
-  lookTouch.lastX = t.clientX;
+function angleDelta(a, b) {
+  let d = a - b;
+  while (d > Math.PI) d -= Math.PI * 2;
+  while (d < -Math.PI) d += Math.PI * 2;
+  return d;
 }
 
-function onLookMove(e) {
-  if (lookTouch.id == null) return;
-  for (const t of e.changedTouches) {
-    if (t.identifier !== lookTouch.id) continue;
-    e.preventDefault();
-    player.angle += (t.clientX - lookTouch.lastX) * 0.005;
-    lookTouch.lastX = t.clientX;
+/** Soft auto-turn toward nearest demon in a forward cone (mobile assist). */
+function applyAimAssist(dt, strength) {
+  let bestAng = null;
+  let bestScore = Infinity;
+  for (const e of enemies) {
+    if (!e.alive) continue;
+    const dx = e.x - player.x;
+    const dy = e.y - player.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist < 0.6 || dist > 13) continue;
+    const to = Math.atan2(dy, dx);
+    const delta = angleDelta(to, player.angle);
+    const abs = Math.abs(delta);
+    if (abs > 0.7) continue;
+    const score = abs * 2 + dist * 0.08;
+    if (score < bestScore) {
+      bestScore = score;
+      bestAng = delta;
+    }
   }
+  if (bestAng == null) return;
+  player.angle += bestAng * Math.min(1, strength * dt);
 }
-
-function onLookEnd(e) {
-  for (const t of e.changedTouches) {
-    if (t.identifier === lookTouch.id) lookTouch.id = null;
-  }
-}
-
-document.addEventListener("touchstart", onLookStart, { passive: true });
-document.addEventListener("touchmove", onLookMove, { passive: false });
-document.addEventListener("touchend", onLookEnd, { passive: true });
-document.addEventListener("touchcancel", onLookEnd, { passive: true });
 
 document.addEventListener("keydown", (e) => applyKey(e, true), { passive: false });
 document.addEventListener("keyup", (e) => applyKey(e, false), { passive: false });
@@ -711,15 +734,25 @@ function tick(now) {
     state.invuln = Math.max(0, state.invuln - dt);
     state.cooldown = Math.max(0, state.cooldown - dt);
 
-    if (input.firing) fire();
+    if (input.firing || input.rush) fire();
 
     if (input.turnLeft) player.angle -= 2.2 * dt;
     if (input.turnRight) player.angle += 2.2 * dt;
+    // Right stick = aim / turn
+    if (Math.abs(input.lookX) > 0.08) {
+      player.angle += input.lookX * 2.9 * dt;
+    }
 
-    const speed = (input.run ? 4.2 : 2.8) * dt;
+    // Soft auto-aim while shooting; stronger on RUSH
+    if (isTouchUI && (input.firing || input.rush)) {
+      applyAimAssist(dt, input.rush ? 5.2 : 3.2);
+    }
+
+    const speeding = input.run || input.rush;
+    const speed = (speeding ? 4.2 : 2.8) * dt;
     let mx = 0;
     let my = 0;
-    if (input.forward) {
+    if (input.forward || input.rush) {
       mx += Math.cos(player.angle);
       my += Math.sin(player.angle);
     }
@@ -745,11 +778,11 @@ function tick(now) {
     const len = Math.hypot(mx, my);
     if (len > 0) {
       tryMove(player.x + (mx / len) * speed, player.y + (my / len) * speed);
-      player.bob += dt * (input.run ? 14 : 10);
+      player.bob += dt * (speeding ? 14 : 10);
       state.footT -= dt;
       if (state.footT <= 0) {
         sfxStep();
-        state.footT = input.run ? 0.28 : 0.38;
+        state.footT = speeding ? 0.28 : 0.38;
       }
     }
 
