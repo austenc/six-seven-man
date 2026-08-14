@@ -314,7 +314,7 @@ function tryUse() {
     door.open = true;
     map.tiles[door.y][door.x] = 0;
     sfxDoor();
-    showMessage("Door opened");
+    showMessage(door.secret ? "Secret found!" : "Door opened");
     return;
   }
   // Exit

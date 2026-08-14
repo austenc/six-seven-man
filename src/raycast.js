@@ -153,7 +153,7 @@ export function createRenderer(canvas, textures, sprites) {
       else wallX = player.x + perpWallDist * rayDirX;
       wallX -= Math.floor(wallX);
 
-      let texName = doorHit ? "door" : map.wallTex[mapY]?.[mapX] || "tech";
+      let texName = map.wallTex[mapY]?.[mapX] || (doorHit ? "door" : "brick");
       if ((side === 0 && rayDirX > 0) || (side === 1 && rayDirY < 0)) {
         // flip
       }
