@@ -1,5 +1,5 @@
 import { LEVELS, parseLevel, isBlocked } from "./maps.js";
-import { createTextures, createSprites } from "./textures.js";
+import { createTextures, createSprites, drawMugshot } from "./textures.js";
 import { createRenderer, hitscan } from "./raycast.js";
 import { WEAPONS } from "./weapons.js";
 import {
@@ -22,7 +22,7 @@ const healthText = document.getElementById("health-text");
 const ammoText = document.getElementById("ammo-text");
 const weaponText = document.getElementById("weapon-text");
 const levelText = document.getElementById("level-text");
-const faceEl = document.getElementById("face");
+const mugshot = document.getElementById("mugshot");
 const messageEl = document.getElementById("message");
 const hurtVignette = document.getElementById("hurt-vignette");
 const muzzleFlash = document.getElementById("muzzle-flash");
@@ -100,7 +100,8 @@ function refreshHud() {
   weaponText.textContent = w.name;
   levelText.textContent = LEVELS[state.levelIndex]?.id ?? "E1M1";
   ammoText.textContent = String(state.ammo[w.ammoKey]);
-  faceEl.textContent = state.hp > 70 ? "😠" : state.hp > 35 ? "😣" : "🤕";
+  const status = state.hp > 70 ? "ok" : state.hp > 35 ? "hurt" : "bad";
+  drawMugshot(mugshot, status);
 }
 
 function equipWeapon(i) {

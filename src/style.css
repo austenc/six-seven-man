@@ -36,22 +36,46 @@ body {
   right: 0;
   bottom: 0;
   display: grid;
-  grid-template-columns: 1fr 1.4fr 1.2fr 1fr;
+  grid-template-columns: 1fr 1.6fr 1.2fr 1fr;
   gap: 2px;
   background: #1a100c;
   border-top: 4px solid #5a4030;
-  padding: 0.45rem 0.5rem 0.55rem;
+  padding: 0.35rem 0.45rem 0.45rem;
 }
 
 .hud-block {
   background: #2a1810;
   border: 2px solid #6b4a32;
-  padding: 0.4rem 0.5rem;
+  padding: 0.35rem 0.45rem;
   text-align: center;
-  min-height: 72px;
+  min-height: 84px;
   display: flex;
   flex-direction: column;
   justify-content: center;
+  gap: 0.2rem;
+}
+
+.mug-block {
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  padding: 0.25rem 0.4rem;
+}
+
+#mugshot {
+  width: 72px;
+  height: 72px;
+  image-rendering: pixelated;
+  border: 2px solid #5a4030;
+  background: #1a1008;
+  flex-shrink: 0;
+}
+
+.mug-health {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
   gap: 0.2rem;
 }
 
@@ -75,12 +99,6 @@ body {
 #weapon-text {
   font-size: clamp(0.45rem, 1.3vw, 0.65rem);
   line-height: 1.35;
-}
-
-.health-block #face {
-  font-size: 1.4rem;
-  line-height: 1;
-  filter: grayscale(0.2);
 }
 
 #message {

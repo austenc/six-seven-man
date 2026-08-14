@@ -222,11 +222,11 @@ export function createRenderer(canvas, textures, sprites) {
       }
     }
 
-    // Weapon overlay
+    // Weapon overlay — stays in bottom third; slight walk bob / recoil
     const gun = sprites.weapons[weaponId] || sprites.weapons.pea;
-    const bob = Math.sin(player.bob || 0) * 4;
-    const kick = gunKick || 0;
-    bctx.drawImage(gun, 0, 10 + bob + kick * 20);
+    const bob = Math.sin(player.bob || 0) * 3;
+    const kick = (gunKick || 0) * 12;
+    bctx.drawImage(gun, bob * 0.4, bob + kick);
 
     // Scale to full canvas with nearest-neighbor crunch
     ctx.imageSmoothingEnabled = false;
