@@ -1,129 +1,69 @@
 import * as THREE from "three";
+import { LEVELS, parseLevel } from "./maps.js";
 import {
-  createPlayer,
-  WEAPON_DEFS,
-  HOTBAR_SLOT_IDS,
-  updatePlayerAnim,
-  attachWeaponMeshes,
-} from "./player.js";
-import { generateCity } from "./world.js";
-import { spawnEnemies, updateEnemies, clearEnemies } from "./enemies.js";
+  buildLevel,
+  disposeLevel,
+  isSolidAt,
+  tryUseDoor,
+  updateDoors,
+  CELL,
+} from "./level.js";
+import { createPlayerModel, updatePlayerPose } from "./player.js";
+import { WEAPONS, createGunMesh, createProjectile } from "./weapons.js";
+import { spawnEnemies, clearEnemies, updateEnemies, hitEnemy } from "./enemies.js";
 import {
   unlockAudio,
-  sfxFootstep,
-  sfxJump,
-  sfxSwing,
+  sfxShoot,
   sfxHit,
-  sfxKill,
+  sfxExplode,
   sfxHurt,
   sfxPickup,
-  sfxEquip,
-  sfxCrate,
-  sfxUi,
+  sfxDoor,
+  sfxStep,
 } from "./audio.js";
-import { shake, spawnBurst, spawnFloater, updateFx } from "./fx.js";
 
 const canvas = document.getElementById("game");
 const overlay = document.getElementById("overlay");
 const startBtn = document.getElementById("start");
-const healthFill = document.getElementById("health-fill");
-const healthText = document.getElementById("health-text");
-const weaponEl = document.getElementById("weapon");
-const messageEl = document.getElementById("message");
-const hotbarEl = document.getElementById("hotbar");
-const inventoryEl = document.getElementById("inventory");
-const inventorySlotsEl = document.getElementById("inventory-slots");
-const scoreEl = document.getElementById("score");
-const comboEl = document.getElementById("combo");
-const hurtVignette = document.getElementById("hurt-vignette");
 const hudEl = document.getElementById("hud");
 const crosshairEl = document.getElementById("crosshair");
+const healthText = document.getElementById("health-text");
+const ammoText = document.getElementById("ammo-text");
+const weaponText = document.getElementById("weapon-text");
+const levelText = document.getElementById("level-text");
+const faceEl = document.getElementById("face");
+const messageEl = document.getElementById("message");
+const hurtVignette = document.getElementById("hurt-vignette");
+const muzzleFlash = document.getElementById("muzzle-flash");
 const gameoverEl = document.getElementById("gameover");
 const goScoreEl = document.getElementById("go-score");
 const restartBtn = document.getElementById("restart");
+const levelClearEl = document.getElementById("levelclear");
+const clearTitle = document.getElementById("clear-title");
+const clearStats = document.getElementById("clear-stats");
+const nextLevelBtn = document.getElementById("next-level");
+const winEl = document.getElementById("win");
+const winStats = document.getElementById("win-stats");
+const playAgainBtn = document.getElementById("play-again");
 
 canvas.tabIndex = 0;
 
-const MAX_HP = 100;
-const PLAYER_RADIUS = 0.7;
-const MOVE_SPEED = 13;
-const SPRINT_MULT = 1.55;
-const JUMP_VEL = 11.5;
-const GRAVITY = 32;
-
-const inventory = {
-  owned: new Set(["fists"]),
-  equippedSlot: 0,
-  open: false,
-};
-
 const state = {
-  hp: MAX_HP,
-  attacking: false,
-  attackT: 0,
-  attackDuration: 0.26,
-  hitApplied: false,
-  messageT: 0,
-  invuln: 0,
-  alive: true,
   started: false,
-  score: 0,
-  combo: 0,
-  comboT: 0,
+  alive: true,
+  hp: 100,
+  weaponIndex: 0,
+  owned: new Set(["pea"]),
+  ammo: { pea: 40, corn: 0, cob: 0 },
+  cooldown: 0,
+  invuln: 0,
+  messageT: 0,
+  levelIndex: 0,
+  kills: 0,
+  totalKills: 0,
+  levelStart: 0,
   footT: 0,
-  wasGrounded: true,
-};
-
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x87b5d9);
-scene.fog = new THREE.Fog(0x87b5d9, 70, 175);
-
-const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 320);
-camera.position.set(0, 10, 14);
-
-const hemi = new THREE.HemisphereLight(0xfff2d9, 0x4a5a3a, 0.85);
-scene.add(hemi);
-const sun = new THREE.DirectionalLight(0xffe0b0, 1.15);
-sun.position.set(40, 60, 20);
-sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048);
-sun.shadow.camera.near = 1;
-sun.shadow.camera.far = 220;
-sun.shadow.camera.left = -120;
-sun.shadow.camera.right = 120;
-sun.shadow.camera.top = 120;
-sun.shadow.camera.bottom = -120;
-scene.add(sun);
-
-const { colliders, openSpots, crates, softRadius, fadeRadius } = generateCity(scene, 67);
-const player = createPlayer();
-player.position.set(0, 0, 0);
-scene.add(player);
-
-const enemies = spawnEnemies(scene, openSpots, 22, 67);
-
-const aimRay = new THREE.Raycaster();
-const aimNdc = new THREE.Vector2(0, 0);
-const aimPoint = new THREE.Vector3();
-const aimDir = new THREE.Vector3();
-const weaponOrigin = new THREE.Vector3();
-const aimHitCenter = new THREE.Vector3();
-const aimToCenter = new THREE.Vector3();
-const softPush = new THREE.Vector3();
-let aimPitch = 0;
-
-const cam = {
-  yaw: 0,
-  pitch: 0.35,
-  dist: 12,
-  minPitch: 0.05,
-  maxPitch: 1.25,
+  firingPose: 0,
 };
 
 const input = {
@@ -131,480 +71,419 @@ const input = {
   back: false,
   left: false,
   right: false,
-  jump: false,
-  sprint: false,
+  run: false,
+  use: false,
 };
 
-const velocity = new THREE.Vector3();
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x1a0e0a);
+scene.fog = new THREE.FogExp2(0x1a0e0a, 0.045);
+
+const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.1, 200);
+
+const hemi = new THREE.HemisphereLight(0xffccaa, 0x221108, 0.55);
+scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xff8844, 0.35);
+sun.position.set(20, 40, 10);
+scene.add(sun);
+
+const player = createPlayerModel();
+scene.add(player);
+
+const cam = { yaw: 0, pitch: 0.18, dist: 7.5, minP: -0.1, maxP: 0.55 };
+const velocityY = { v: 0 };
 let grounded = true;
+
+let level = null;
+let enemies = [];
+let pickups = [];
+let projectiles = [];
+let gunMesh = null;
 
 const tmp = new THREE.Vector3();
 const forward = new THREE.Vector3();
 const right = new THREE.Vector3();
 const wish = new THREE.Vector3();
+const aimOrigin = new THREE.Vector3();
+const aimDir = new THREE.Vector3();
+const shootRay = new THREE.Raycaster();
 
-function showMessage(text, duration = 2.2) {
+function showMessage(text, dur = 2) {
   messageEl.textContent = text;
-  state.messageT = duration;
+  state.messageT = dur;
 }
 
-function bumpScore(points) {
-  state.score += points;
-  scoreEl.textContent = `SCORE ${state.score}`;
+function currentWeapon() {
+  return WEAPONS[state.weaponIndex];
 }
 
-function bumpCombo() {
-  state.combo += 1;
-  state.comboT = 2.4;
-  if (state.combo >= 2) {
-    comboEl.textContent = `${state.combo}x COMBO`;
-    comboEl.classList.add("pop");
-    comboEl.classList.remove("hidden");
-    requestAnimationFrame(() => comboEl.classList.remove("pop"));
+function refreshHud() {
+  const w = currentWeapon();
+  healthText.textContent = `${Math.ceil(state.hp)}%`;
+  weaponText.textContent = w.name;
+  levelText.textContent = LEVELS[state.levelIndex]?.id ?? "E1M1";
+  const ammo = state.ammo[w.ammoKey];
+  ammoText.textContent = String(ammo);
+  if (state.hp > 70) faceEl.textContent = "😠";
+  else if (state.hp > 35) faceEl.textContent = "😣";
+  else faceEl.textContent = "🤕";
+}
+
+function equipWeapon(index) {
+  const w = WEAPONS[index];
+  if (!w || !state.owned.has(w.id)) {
+    showMessage("No weapon in that slot.");
+    return;
+  }
+  state.weaponIndex = index;
+  attachGun();
+  refreshHud();
+  showMessage(w.name);
+}
+
+function attachGun() {
+  const hand = player.userData.hand;
+  while (hand.children.length) hand.remove(hand.children[0]);
+  gunMesh = createGunMesh(currentWeapon().id);
+  gunMesh.rotation.set(0.2, 0, 0);
+  hand.add(gunMesh);
+}
+
+function solidPlayer(x, z) {
+  const r = 0.55;
+  return (
+    isSolidAt(level, x + r, z) ||
+    isSolidAt(level, x - r, z) ||
+    isSolidAt(level, x, z + r) ||
+    isSolidAt(level, x, z - r)
+  );
+}
+
+function clearPickups() {
+  for (const p of pickups) scene.remove(p.mesh);
+  pickups = [];
+}
+
+function spawnPickups(spawns) {
+  clearPickups();
+  for (const s of spawns.pickups) {
+    const color =
+      s.kind === "health" ? 0xe74c3c : s.kind === "pea" ? 0x6ab04c : s.kind === "shotgun" ? 0xf1c40f : 0xe67e22;
+    const mesh = new THREE.Mesh(
+      new THREE.BoxGeometry(0.7, 0.7, 0.7),
+      new THREE.MeshLambertMaterial({ color, emissive: color, emissiveIntensity: 0.35 })
+    );
+    mesh.position.set(s.x * CELL, 1.0, s.z * CELL);
+    scene.add(mesh);
+    pickups.push({ mesh, kind: s.kind, taken: false });
   }
 }
 
-function setHealth(hp) {
-  state.hp = Math.max(0, Math.min(MAX_HP, hp));
-  healthFill.style.width = `${(state.hp / MAX_HP) * 100}%`;
-  healthText.textContent = String(Math.ceil(state.hp));
-  if (state.hp <= 0 && state.alive) {
-    triggerGameOver();
-  }
+function loadLevel(index) {
+  disposeLevel(scene, level);
+  clearEnemies(scene, enemies);
+  clearPickups();
+  for (const p of projectiles) scene.remove(p.mesh);
+  projectiles = [];
+
+  state.levelIndex = index;
+  state.kills = 0;
+  state.levelStart = performance.now();
+
+  const parsed = parseLevel(LEVELS[index]);
+  level = buildLevel(scene, parsed);
+  enemies = spawnEnemies(scene, parsed.spawns);
+  spawnPickups(parsed.spawns);
+
+  const start = parsed.spawns.player;
+  player.position.set(start.x * CELL, 0, start.z * CELL);
+  cam.yaw = 0;
+  cam.pitch = 0.18;
+  velocityY.v = 0;
+  grounded = true;
+
+  attachGun();
+  refreshHud();
+  showMessage(`${parsed.id}: ${parsed.name}`);
+}
+
+function startGame() {
+  state.started = true;
+  state.alive = true;
+  state.hp = 100;
+  state.weaponIndex = 0;
+  state.owned = new Set(["pea"]);
+  state.ammo = { pea: 40, corn: 0, cob: 0 };
+  state.cooldown = 0;
+  state.invuln = 0;
+  state.totalKills = 0;
+  state.levelIndex = 0;
+
+  overlay.classList.add("hidden");
+  gameoverEl.classList.add("hidden");
+  levelClearEl.classList.add("hidden");
+  winEl.classList.add("hidden");
+  hudEl.classList.remove("hidden");
+  crosshairEl.classList.remove("hidden");
+
+  loadLevel(0);
+  canvas.focus();
+  requestAnimationFrame(() => canvas.requestPointerLock?.());
 }
 
 function triggerGameOver() {
   state.alive = false;
-  state.attacking = false;
-  clearInput();
   document.exitPointerLock?.();
   crosshairEl.classList.add("hidden");
-  goScoreEl.textContent = `SCORE ${state.score}`;
+  goScoreEl.textContent = `Kills ${state.totalKills}`;
   gameoverEl.classList.remove("hidden");
   sfxHurt();
 }
 
-function restartRun() {
-  gameoverEl.classList.add("hidden");
-  inventory.open = false;
-  inventoryEl.classList.add("hidden");
+function completeLevel() {
+  document.exitPointerLock?.();
+  crosshairEl.classList.add("hidden");
+  const secs = ((performance.now() - state.levelStart) / 1000).toFixed(1);
+  clearTitle.textContent = `${LEVELS[state.levelIndex].id} COMPLETE`;
+  clearStats.textContent = `Kills ${state.kills} · Time ${secs}s`;
+  nextLevelBtn.textContent =
+    state.levelIndex >= LEVELS.length - 1 ? "FINISH HIM (THE CAKE)" : "NEXT FLOOR";
+  levelClearEl.classList.remove("hidden");
+}
 
-  clearEnemies(scene, enemies);
-  const fresh = spawnEnemies(scene, openSpots, 22, 67 + Math.floor(Math.random() * 1000));
-  enemies.push(...fresh);
-
-  for (const c of crates) {
-    c.opened = false;
-    c.mesh.visible = true;
+function goNextLevel() {
+  levelClearEl.classList.add("hidden");
+  if (state.levelIndex >= LEVELS.length - 1) {
+    winStats.textContent = `Total kills ${state.totalKills}. The desserts are compost.`;
+    winEl.classList.remove("hidden");
+    return;
   }
-
-  inventory.owned = new Set(["fists"]);
-  inventory.equippedSlot = 0;
-  attachWeaponMeshes(player, null);
-
-  player.position.set(0, 0, 0);
-  player.rotation.set(0, 0, 0);
-  velocity.set(0, 0, 0);
-  grounded = true;
-  cam.yaw = 0;
-  cam.pitch = 0.35;
-
-  state.alive = true;
-  state.attacking = false;
-  state.attackT = 0;
-  state.hitApplied = false;
-  state.invuln = 1.2;
-  state.combo = 0;
-  state.comboT = 0;
-  state.score = 0;
-  state.messageT = 0;
-  comboEl.classList.add("hidden");
-  messageEl.textContent = "";
-
-  setHealth(MAX_HP);
-  bumpScore(0);
-  refreshHud();
-  clearInput();
-
+  loadLevel(state.levelIndex + 1);
   crosshairEl.classList.remove("hidden");
-  hudEl.classList.remove("hidden");
   canvas.focus();
   requestAnimationFrame(() => canvas.requestPointerLock?.());
-  showMessage("Back at it — desserts still hate you.");
 }
 
-function getEquippedDef() {
-  const id = HOTBAR_SLOT_IDS[inventory.equippedSlot];
-  if (!id || !inventory.owned.has(id)) return WEAPON_DEFS.fists;
-  return WEAPON_DEFS[id] || WEAPON_DEFS.fists;
-}
-
-function refreshHud() {
-  const def = getEquippedDef();
-  const hands = def.twoHanded ? " (2H)" : "";
-  weaponEl.textContent = `Weapon: ${def.label}${hands}`;
-
-  hotbarEl.querySelectorAll(".hotbar-slot").forEach((el, i) => {
-    const id = HOTBAR_SLOT_IDS[i];
-    const owned = id && inventory.owned.has(id);
-    const defSlot = id ? WEAPON_DEFS[id] : null;
-    el.classList.toggle("active", i === inventory.equippedSlot);
-    el.classList.toggle("locked", !owned);
-    el.querySelector(".slot-name").textContent = owned && defSlot ? defSlot.label : id ? "???" : "—";
-  });
-
-  inventorySlotsEl.innerHTML = "";
-  HOTBAR_SLOT_IDS.forEach((id, i) => {
-    const owned = id && inventory.owned.has(id);
-    const defSlot = id ? WEAPON_DEFS[id] : null;
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "inv-item" + (i === inventory.equippedSlot ? " equipped" : "") + (!owned ? " locked" : "");
-    btn.innerHTML = `
-      <span class="inv-key">${i + 1}</span>
-      <span class="inv-label">${owned && defSlot ? defSlot.label : id ? "Locked" : "Empty"}</span>
-      <span class="inv-meta">${owned && defSlot ? `${defSlot.damage} dmg · ${defSlot.twoHanded ? "Two-handed" : "One-handed"}` : "—"}</span>
-    `;
-    if (owned) {
-      btn.addEventListener("click", () => {
-        equipSlot(i);
-        setInventoryOpen(false);
-        canvas.requestPointerLock?.();
-      });
-    }
-    inventorySlotsEl.appendChild(btn);
-  });
-}
-
-function equipSlot(slotIndex) {
-  if (state.attacking) return;
-  const id = HOTBAR_SLOT_IDS[slotIndex];
-  if (!id || !inventory.owned.has(id)) {
-    showMessage("Nothing in that slot yet.");
-    return;
-  }
-  inventory.equippedSlot = slotIndex;
-  const def = getEquippedDef();
-  attachWeaponMeshes(player, def.builder ? def : null);
-  state.attackDuration = def.attackDuration;
+function setHealth(hp) {
+  state.hp = Math.max(0, Math.min(100, hp));
   refreshHud();
-  sfxEquip();
-  showMessage(`Equipped ${def.label}`);
+  if (state.hp <= 0 && state.alive) triggerGameOver();
 }
 
-function grantWeapon(id) {
-  const def = WEAPON_DEFS[id];
-  if (!def) return;
-  const firstTime = !inventory.owned.has(id);
-  inventory.owned.add(id);
-  sfxPickup();
-  if (firstTime) {
-    const slot = HOTBAR_SLOT_IDS.indexOf(id);
-    if (slot >= 0) equipSlot(slot);
-    showMessage(`Found ${def.label}! Press ${slot + 1} or I for inventory.`);
-  } else {
-    showMessage(`Already have ${def.label}.`);
-    refreshHud();
-  }
+function onHitPlayer(dmg, label) {
+  if (state.invuln > 0 || !state.alive) return;
+  setHealth(state.hp - dmg);
+  state.invuln = 0.65;
+  sfxHurt();
+  hurtVignette.classList.add("show");
+  setTimeout(() => hurtVignette.classList.remove("show"), 180);
+  showMessage(`${label} hit you!`);
 }
 
-function setInventoryOpen(open) {
-  if (!state.alive) return;
-  inventory.open = open;
-  inventoryEl.classList.toggle("hidden", !open);
-  crosshairEl.classList.toggle("hidden", open);
-  if (open) {
-    document.exitPointerLock?.();
-    sfxUi();
-    refreshHud();
-  } else if (state.started) {
-    canvas.focus();
-    canvas.requestPointerLock?.();
-  }
+function getAim() {
+  // Camera ray through crosshair → aim point; weapon fires from player toward that
+  shootRay.setFromCamera(new THREE.Vector2(0, 0), camera);
+  const far = tmp.copy(shootRay.ray.origin).addScaledVector(shootRay.ray.direction, 60);
+  aimOrigin.set(player.position.x, player.position.y + 3.2, player.position.z);
+  aimDir.subVectors(far, aimOrigin).normalize();
+  return { origin: aimOrigin, dir: aimDir };
 }
 
-function tryOpenCrate() {
-  if (inventory.open) return;
-  let nearest = null;
-  let nearestDist = 3.2;
-  for (const c of crates) {
-    if (c.opened) continue;
-    const d = player.position.distanceTo(c.position);
-    if (d < nearestDist) {
-      nearestDist = d;
-      nearest = c;
-    }
-  }
-  if (!nearest) {
-    showMessage("No loot crate nearby.");
+function fire() {
+  if (!state.alive || state.cooldown > 0) return;
+  const w = currentWeapon();
+  if (state.ammo[w.ammoKey] < w.ammoPerShot) {
+    showMessage("Out of ammo!");
     return;
   }
-  nearest.opened = true;
-  nearest.mesh.visible = false;
-  sfxCrate();
-  spawnBurst(scene, nearest.position, 0xffe082, 10);
-  bumpScore(15);
+  state.ammo[w.ammoKey] -= w.ammoPerShot;
+  state.cooldown = w.cooldown;
+  state.firingPose = 0.18;
+  sfxShoot(w.id === "pea" ? "pea" : w.id);
+  refreshHud();
+  muzzleFlash.classList.add("show");
+  setTimeout(() => muzzleFlash.classList.remove("show"), 60);
+  cam.pitch -= w.kick * 0.08;
 
-  const roll = Math.random();
-  if (roll < 0.5) grantWeapon("carrotSword");
-  else if (roll < 0.95) grantWeapon("asparagusSpear");
-  else {
-    setHealth(state.hp + 25);
-    sfxPickup();
-    spawnFloater(scene, nearest.position.clone(), "+25", "#a8e06c");
-    showMessage("Found a veggie snack! +25 HP");
+  const { origin, dir } = getAim();
+
+  if (w.projectile) {
+    const mesh = createProjectile(w.color);
+    mesh.position.copy(origin);
+    scene.add(mesh);
+    projectiles.push({
+      mesh,
+      vel: dir.clone().multiplyScalar(28),
+      life: 2.2,
+      damage: w.damage,
+      splash: w.splash,
+    });
+    return;
+  }
+
+  // Hitscan pellets
+  for (let i = 0; i < w.pellets; i++) {
+    const d = dir.clone();
+    d.x += (Math.random() - 0.5) * w.spread * 2;
+    d.y += (Math.random() - 0.5) * w.spread;
+    d.z += (Math.random() - 0.5) * w.spread * 2;
+    d.normalize();
+
+    let best = null;
+    let bestT = w.range;
+    for (const e of enemies) {
+      if (!e.alive) continue;
+      const center = e.mesh.position.clone();
+      center.y += 1.2;
+      const to = center.clone().sub(origin);
+      const t = to.dot(d);
+      if (t < 0.3 || t > w.range) continue;
+      const closest = origin.clone().addScaledVector(d, t);
+      if (closest.distanceToSquared(center) > (e.radius + 0.35) ** 2) continue;
+      if (t < bestT) {
+        bestT = t;
+        best = e;
+      }
+    }
+    if (best) {
+      const killed = hitEnemy(best, w.damage);
+      sfxHit();
+      if (killed) {
+        state.kills++;
+        state.totalKills++;
+        showMessage(`${best.type.label} gibbed!`);
+      }
+    }
   }
 }
 
-function getLookDirection(out) {
-  out.set(-Math.sin(cam.yaw), 0, -Math.cos(cam.yaw));
-  return out;
-}
-
-/** Crosshair → world aim. Body + weapons + hit tests all use this. */
-function updateAim() {
-  aimRay.setFromCamera(aimNdc, camera);
-  const ray = aimRay.ray;
-
-  // Prefer where the crosshair meets chest-height plane; else a look-distance point
-  const planeY = player.position.y + 2.4;
-  let tPlane = Infinity;
-  if (Math.abs(ray.direction.y) > 0.001) {
-    tPlane = (planeY - ray.origin.y) / ray.direction.y;
-  }
-  if (tPlane > 2 && tPlane < 80) {
-    aimPoint.copy(ray.origin).addScaledVector(ray.direction, tPlane);
-  } else {
-    aimPoint.copy(ray.origin).addScaledVector(ray.direction, 22);
-  }
-
-  weaponOrigin.set(player.position.x, player.position.y + 3.15, player.position.z);
-  aimDir.subVectors(aimPoint, weaponOrigin);
-  const len = aimDir.length();
-  if (len < 0.5) {
-    getLookDirection(tmp);
-    aimDir.set(tmp.x, -Math.sin(cam.pitch - 0.25), tmp.z).normalize();
-    aimPoint.copy(weaponOrigin).addScaledVector(aimDir, 16);
-  } else {
-    aimDir.multiplyScalar(1 / len);
-  }
-
-  const horiz = Math.hypot(aimDir.x, aimDir.z);
-  aimPitch = Math.atan2(aimDir.y, Math.max(0.05, horiz));
-}
-
-function attack() {
-  if (!state.alive || !state.started || state.attacking || inventory.open) return;
-  const def = getEquippedDef();
-  state.attacking = true;
-  state.attackDuration = def.attackDuration;
-  state.attackT = def.attackDuration;
-  state.hitApplied = false;
-  sfxSwing(def.style);
-}
-
-function applyAttackHits() {
-  const def = getEquippedDef();
-  updateAim();
-
-  // Hit test along the weapon aim (body → crosshair), not a free camera-only ray
-  const beam =
-    def.style === "spear" ? 0.26 : def.style === "sword" ? 0.52 : 0.4;
-
-  let best = null;
-  let bestT = def.range;
+function explodeAt(pos, damage, radius) {
+  sfxExplode();
+  const blast = new THREE.Mesh(
+    new THREE.SphereGeometry(0.6, 8, 8),
+    new THREE.MeshBasicMaterial({ color: 0xff6622 })
+  );
+  blast.position.copy(pos);
+  scene.add(blast);
+  setTimeout(() => scene.remove(blast), 120);
 
   for (const e of enemies) {
-    if (!e.userData.alive) continue;
-
-    const enemyR = e.userData.hitRadius ?? 0.7;
-    const hitR = enemyR * (def.style === "spear" ? 0.8 : 1.0) + beam;
-    aimHitCenter.set(
-      e.position.x,
-      e.position.y + (e.userData.hitHeight ?? 1.4),
-      e.position.z
-    );
-
-    aimToCenter.subVectors(aimHitCenter, weaponOrigin);
-    const t = aimToCenter.dot(aimDir);
-    if (t < 0.35 || t > def.range) continue;
-    const closest = tmp.copy(weaponOrigin).addScaledVector(aimDir, t);
-    if (closest.distanceToSquared(aimHitCenter) > hitR * hitR) continue;
-
-    if (t < bestT) {
-      bestT = t;
-      best = e;
+    if (!e.alive) continue;
+    const d = e.mesh.position.distanceTo(pos);
+    if (d < radius) {
+      const falloff = 1 - d / radius;
+      const killed = hitEnemy(e, damage * falloff);
+      if (killed) {
+        state.kills++;
+        state.totalKills++;
+        showMessage(`${e.type.label} exploded!`);
+      }
     }
   }
+  if (player.position.distanceTo(pos) < radius * 0.7) {
+    onHitPlayer(Math.round(damage * 0.25), "Cob blast");
+  }
+}
 
-  if (!best) {
-    shake.add(0.06);
+function updateProjectiles(dt) {
+  for (let i = projectiles.length - 1; i >= 0; i--) {
+    const p = projectiles[i];
+    p.life -= dt;
+    p.mesh.position.addScaledVector(p.vel, dt);
+    p.mesh.lookAt(p.mesh.position.clone().add(p.vel));
+
+    let hit = false;
+    if (isSolidAt(level, p.mesh.position.x, p.mesh.position.z)) hit = true;
+    for (const e of enemies) {
+      if (!e.alive) continue;
+      if (p.mesh.position.distanceTo(e.mesh.position) < 1.2) {
+        hit = true;
+        break;
+      }
+    }
+    if (hit || p.life <= 0) {
+      explodeAt(p.mesh.position.clone(), p.damage, p.splash);
+      scene.remove(p.mesh);
+      projectiles.splice(i, 1);
+    }
+  }
+}
+
+function updatePickups() {
+  for (const p of pickups) {
+    if (p.taken) continue;
+    p.mesh.rotation.y += 0.03;
+    p.mesh.position.y = 1 + Math.sin(performance.now() * 0.005) * 0.15;
+    if (player.position.distanceTo(p.mesh.position) < 1.6) {
+      p.taken = true;
+      p.mesh.visible = false;
+      sfxPickup();
+      if (p.kind === "health") {
+        setHealth(state.hp + 25);
+        showMessage("+25 HEALTH");
+      } else if (p.kind === "pea") {
+        state.ammo.pea += 20;
+        showMessage("+20 PEAS");
+      } else if (p.kind === "shotgun") {
+        state.owned.add("shotgun");
+        state.ammo.corn += 12;
+        equipWeapon(1);
+        showMessage("CORN SHOTGUN!");
+      } else if (p.kind === "launcher") {
+        state.owned.add("launcher");
+        state.ammo.cob += 5;
+        equipWeapon(2);
+        showMessage("COB LAUNCHER!");
+      }
+      refreshHud();
+    }
+  }
+}
+
+function tryUse() {
+  if (tryUseDoor(level, player.position.x, player.position.z)) {
+    sfxDoor();
+    showMessage("Door opened");
     return;
   }
-
-  const e = best;
-  e.userData.hp -= def.damage;
-  e.userData.hitFlash = 0.25;
-
-  aimToCenter.set(e.position.x - player.position.x, 0, e.position.z - player.position.z);
-  if (aimToCenter.lengthSq() > 0.001) {
-    aimToCenter.normalize();
-    e.position.addScaledVector(aimToCenter, def.style === "spear" ? 2.0 : 1.5);
-  }
-
-  spawnBurst(scene, e.position, def.style === "sword" ? 0xf39c12 : 0x6ab04c, 8);
-  spawnFloater(scene, e.position.clone(), `-${def.damage}`, "#ff6b35");
-
-  if (e.userData.hp <= 0) {
-    e.userData.alive = false;
-    e.visible = false;
-    sfxKill();
-    shake.add(0.45);
-    spawnBurst(scene, e.position, 0xffe08a, 22);
-    spawnFloater(scene, e.position.clone(), "SMASH", "#ffe08a");
-    const comboMult = 1 + Math.min(5, state.combo) * 0.25;
-    const points = Math.round(100 * comboMult);
-    bumpCombo();
-    bumpScore(points);
-    showMessage(`${e.userData.label} smashed! +${points}`);
-  } else {
-    sfxHit();
-    shake.add(0.22);
-    bumpCombo();
-    bumpScore(10);
-    showMessage(`Hit ${e.userData.label}!`);
-  }
-}
-
-function resolveCollisions(pos, dt) {
-  for (const c of colliders) {
-    const nearestX = Math.max(c.minX, Math.min(pos.x, c.maxX));
-    const nearestZ = Math.max(c.minZ, Math.min(pos.z, c.maxZ));
-    const dx = pos.x - nearestX;
-    const dz = pos.z - nearestZ;
-    const distSq = dx * dx + dz * dz;
-    const r = PLAYER_RADIUS;
-    if (distSq >= r * r) continue;
-    if (distSq < 1e-8) {
-      const left = Math.abs(pos.x - c.minX);
-      const rightD = Math.abs(c.maxX - pos.x);
-      const top = Math.abs(pos.z - c.minZ);
-      const bot = Math.abs(c.maxZ - pos.z);
-      const m = Math.min(left, rightD, top, bot);
-      if (m === left) pos.x = c.minX - r;
-      else if (m === rightD) pos.x = c.maxX + r;
-      else if (m === top) pos.z = c.minZ - r;
-      else pos.z = c.maxZ + r;
+  const ex = level.parsed.spawns.exit;
+  if (ex) {
+    const dx = player.position.x - ex.x * CELL;
+    const dz = player.position.z - ex.z * CELL;
+    if (dx * dx + dz * dz < (CELL * 1.1) ** 2) {
+      // Need most enemies dead? Soft: just reach exit
+      completeLevel();
     } else {
-      const dist = Math.sqrt(distSq);
-      pos.x = nearestX + (dx / dist) * r;
-      pos.z = nearestZ + (dz / dist) * r;
+      showMessage("Find the green exit pad");
     }
   }
-
-  // Soft map edge — fog hides the skirt; gentle inward pull, no hard wall
-  const dist = Math.hypot(pos.x, pos.z);
-  if (dist > softRadius) {
-    const over = dist - softRadius;
-    const strength = Math.min(1, over / Math.max(1, fadeRadius - softRadius));
-    softPush.set(-pos.x / dist, 0, -pos.z / dist);
-    pos.addScaledVector(softPush, over * (0.35 + strength * 1.8) * Math.min(1, dt * 8));
-  }
-}
-
-function updateCamera(dt = 1 / 60) {
-  const targetY = player.position.y + 3.8;
-  const cp = Math.cos(cam.pitch);
-  camera.position.set(
-    player.position.x + Math.sin(cam.yaw) * cp * cam.dist,
-    targetY + Math.sin(cam.pitch) * cam.dist,
-    player.position.z + Math.cos(cam.yaw) * cp * cam.dist
-  );
-
-  for (const c of colliders) {
-    const p = camera.position;
-    if (p.x > c.minX && p.x < c.maxX && p.z > c.minZ && p.z < c.maxZ && p.y < c.height + 1) {
-      camera.position.lerp(tmp.set(player.position.x, targetY, player.position.z), 0.55);
-      break;
-    }
-  }
-
-  const jolt = shake.update(dt);
-  camera.position.x += jolt.x;
-  camera.position.y += jolt.y;
-  camera.position.z += jolt.z;
-  camera.lookAt(player.position.x, targetY, player.position.z);
-}
-
-function onHitPlayer(damage, label) {
-  if (state.invuln > 0 || !state.alive) return;
-  setHealth(state.hp - damage);
-  state.invuln = 0.7;
-  state.combo = 0;
-  state.comboT = 0;
-  comboEl.classList.add("hidden");
-  sfxHurt();
-  shake.add(0.55);
-  hurtVignette.classList.add("show");
-  setTimeout(() => hurtVignette.classList.remove("show"), 220);
-  showMessage(`${label} attacked you for ${damage}!`);
 }
 
 function applyKey(e, pressed) {
-  if (!state.alive && state.started) return;
-
-  if (inventory.open && pressed) {
-    if (e.code === "KeyI" || e.key.toLowerCase() === "i" || e.code === "Escape") {
-      setInventoryOpen(false);
-      e.preventDefault();
-      return;
-    }
-    if (e.code.startsWith("Digit") || e.code.startsWith("Numpad")) {
-      const n = parseInt(e.code.replace("Digit", "").replace("Numpad", ""), 10);
-      if (n >= 1 && n <= 4) {
-        equipSlot(n - 1);
-        setInventoryOpen(false);
-        e.preventDefault();
-      }
-      return;
-    }
-  }
-
-  const code = e.code;
-  const key = e.key.toLowerCase();
-
+  if (!state.started || !state.alive) return;
+  const c = e.code;
+  const k = e.key.toLowerCase();
   let handled = true;
-  if (code === "KeyW" || code === "ArrowUp" || key === "w") input.forward = pressed;
-  else if (code === "KeyS" || code === "ArrowDown" || key === "s") input.back = pressed;
-  else if (code === "KeyA" || code === "ArrowLeft" || key === "a") input.left = pressed;
-  else if (code === "KeyD" || code === "ArrowRight" || key === "d") input.right = pressed;
-  else if (code === "Space" || key === " ") input.jump = pressed;
-  else if (code === "ShiftLeft" || code === "ShiftRight") input.sprint = pressed;
-  else if ((code === "KeyE" || key === "e") && pressed && state.started) tryOpenCrate();
-  else if ((code === "KeyI" || key === "i") && pressed && state.started) {
-    setInventoryOpen(!inventory.open);
-  } else if (pressed && state.started && !inventory.open) {
-    const digit = code.startsWith("Digit")
-      ? parseInt(code.replace("Digit", ""), 10)
-      : code.startsWith("Numpad")
-        ? parseInt(code.replace("Numpad", ""), 10)
-        : NaN;
-    if (digit >= 1 && digit <= 4) equipSlot(digit - 1);
-    else handled = false;
-  } else {
-    handled = false;
-  }
-
-  if (handled && state.started) e.preventDefault();
+  if (c === "KeyW" || c === "ArrowUp" || k === "w") input.forward = pressed;
+  else if (c === "KeyS" || c === "ArrowDown" || k === "s") input.back = pressed;
+  else if (c === "KeyA" || c === "ArrowLeft" || k === "a") input.left = pressed;
+  else if (c === "KeyD" || c === "ArrowRight" || k === "d") input.right = pressed;
+  else if (c === "ShiftLeft" || c === "ShiftRight") input.run = pressed;
+  else if ((c === "KeyE" || k === "e") && pressed) tryUse();
+  else if (pressed && (c === "Digit1" || c === "Numpad1")) equipWeapon(0);
+  else if (pressed && (c === "Digit2" || c === "Numpad2")) equipWeapon(1);
+  else if (pressed && (c === "Digit3" || c === "Numpad3")) equipWeapon(2);
+  else handled = false;
+  if (handled) e.preventDefault();
 }
 
 function clearInput() {
-  input.forward = false;
-  input.back = false;
-  input.left = false;
-  input.right = false;
-  input.jump = false;
-  input.sprint = false;
+  input.forward = input.back = input.left = input.right = input.run = false;
 }
 
 document.addEventListener("keydown", (e) => applyKey(e, true), { passive: false });
@@ -612,56 +491,66 @@ document.addEventListener("keyup", (e) => applyKey(e, false), { passive: false }
 window.addEventListener("blur", clearInput);
 
 document.addEventListener("mousedown", (e) => {
-  if (!state.started || !state.alive || e.button !== 0 || inventory.open) return;
-  if (e.target === canvas || document.pointerLockElement === canvas) attack();
+  if (!state.started || !state.alive || e.button !== 0) return;
+  if (document.pointerLockElement === canvas || e.target === canvas) fire();
 });
 
 document.addEventListener("mousemove", (e) => {
-  if (!state.started || !state.alive || inventory.open) return;
+  if (!state.started || !state.alive) return;
   if (document.pointerLockElement !== canvas) return;
-  cam.yaw -= e.movementX * 0.0025;
-  cam.pitch += e.movementY * 0.002;
-  cam.pitch = Math.max(cam.minPitch, Math.min(cam.maxPitch, cam.pitch));
+  cam.yaw -= e.movementX * 0.0022;
+  cam.pitch += e.movementY * 0.0018;
+  cam.pitch = Math.max(cam.minP, Math.min(cam.maxP, cam.pitch));
 });
 
 canvas.addEventListener("click", () => {
-  if (!state.started || !state.alive || inventory.open) return;
+  if (!state.started || !state.alive) return;
   canvas.focus();
-  if (document.pointerLockElement !== canvas) canvas.requestPointerLock();
-});
-
-document.getElementById("inventory-close").addEventListener("click", () => {
-  setInventoryOpen(false);
+  canvas.requestPointerLock?.();
 });
 
 startBtn.addEventListener("click", (e) => {
   e.preventDefault();
-  e.stopPropagation();
   unlockAudio();
-  overlay.classList.add("hidden");
-  hudEl.classList.remove("hidden");
-  crosshairEl.classList.remove("hidden");
-  state.started = true;
-  clearInput();
-  canvas.focus();
-  requestAnimationFrame(() => canvas.requestPointerLock?.());
-  showMessage("Desserts are demon food — aim with the crosshair and smash.");
+  startGame();
 });
-
 restartBtn.addEventListener("click", (e) => {
   e.preventDefault();
-  e.stopPropagation();
   unlockAudio();
-  restartRun();
+  startGame();
+});
+nextLevelBtn.addEventListener("click", (e) => {
+  e.preventDefault();
+  goNextLevel();
+});
+playAgainBtn.addEventListener("click", (e) => {
+  e.preventDefault();
+  winEl.classList.add("hidden");
+  startGame();
 });
 
 window.addEventListener("resize", () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setSize(innerWidth, innerHeight);
 });
 
 const clock = new THREE.Clock();
+
+function updateCamera(dt) {
+  const targetY = player.position.y + 3.4;
+  const cp = Math.cos(cam.pitch);
+  camera.position.set(
+    player.position.x + Math.sin(cam.yaw) * cp * cam.dist,
+    targetY + Math.sin(cam.pitch) * cam.dist + 0.8,
+    player.position.z + Math.cos(cam.yaw) * cp * cam.dist
+  );
+  // Soft pull out of walls
+  if (level && isSolidAt(level, camera.position.x, camera.position.z, true)) {
+    camera.position.lerp(tmp.set(player.position.x, targetY + 1, player.position.z), 0.65);
+  }
+  camera.lookAt(player.position.x, targetY, player.position.z);
+}
 
 function tick() {
   const dt = Math.min(clock.getDelta(), 0.05);
@@ -672,30 +561,20 @@ function tick() {
     if (state.messageT <= 0) messageEl.textContent = "";
   }
 
-  if (state.comboT > 0) {
-    state.comboT -= dt;
-    if (state.comboT <= 0) {
-      state.combo = 0;
-      comboEl.classList.add("hidden");
-    }
-  }
-
-  let moving = false;
-
-  if (state.started && state.alive && !inventory.open) {
+  if (state.started && state.alive && level) {
     state.invuln = Math.max(0, state.invuln - dt);
+    state.cooldown = Math.max(0, state.cooldown - dt);
+    state.firingPose = Math.max(0, state.firingPose - dt);
 
-    getLookDirection(forward);
+    forward.set(-Math.sin(cam.yaw), 0, -Math.cos(cam.yaw));
     right.set(-forward.z, 0, forward.x);
 
-    // Body always faces the crosshair / look direction
+    // Face aim
     const faceYaw = Math.atan2(forward.x, forward.z);
     let dy = faceYaw - player.rotation.y;
     while (dy > Math.PI) dy -= Math.PI * 2;
     while (dy < -Math.PI) dy += Math.PI * 2;
-    player.rotation.y += dy * Math.min(1, 18 * dt);
-
-    updateAim();
+    player.rotation.y += dy * Math.min(1, 16 * dt);
 
     wish.set(0, 0, 0);
     if (input.forward) wish.add(forward);
@@ -703,80 +582,44 @@ function tick() {
     if (input.right) wish.add(right);
     if (input.left) wish.sub(right);
 
-    const speed = MOVE_SPEED * (input.sprint ? SPRINT_MULT : 1);
-
-    if (wish.lengthSq() > 0) {
-      moving = true;
+    const moving = wish.lengthSq() > 0;
+    const speed = (input.run ? 14 : 9.5) * (moving ? 1 : 0);
+    if (moving) {
       wish.normalize();
-      player.position.x += wish.x * speed * dt;
-      player.position.z += wish.z * speed * dt;
-    }
+      const nx = player.position.x + wish.x * speed * dt;
+      const nz = player.position.z + wish.z * speed * dt;
+      if (!solidPlayer(nx, player.position.z)) player.position.x = nx;
+      if (!solidPlayer(player.position.x, nz)) player.position.z = nz;
 
-    if (grounded && input.jump) {
-      velocity.y = JUMP_VEL;
-      grounded = false;
-      sfxJump();
-    }
-    velocity.y -= GRAVITY * dt;
-    player.position.y += velocity.y * dt;
-    if (player.position.y <= 0) {
-      player.position.y = 0;
-      velocity.y = 0;
-      grounded = true;
-    }
-
-    if (moving && grounded) {
       state.footT -= dt;
       if (state.footT <= 0) {
-        sfxFootstep();
-        state.footT = input.sprint ? 0.22 : 0.3;
-      }
-    } else {
-      state.footT = 0;
-    }
-
-    resolveCollisions(player.position, dt);
-
-    if (state.attacking) {
-      state.attackT -= dt;
-      const progress = 1 - state.attackT / state.attackDuration;
-      const def = getEquippedDef();
-      const impactAt = def.style === "sword" ? 0.38 : def.style === "spear" ? 0.32 : 0.22;
-      if (!state.hitApplied && progress >= impactAt) {
-        state.hitApplied = true;
-        applyAttackHits();
-      }
-      if (state.attackT <= 0) {
-        state.attacking = false;
-        state.attackT = 0;
-        player.userData.leftArm.position.set(-1.05, 3.55, 0);
-        player.userData.rightArm.position.set(1.05, 3.55, 0);
+        sfxStep();
+        state.footT = input.run ? 0.24 : 0.34;
       }
     }
 
-    updateEnemies(enemies, player.position, dt, onHitPlayer);
-  } else if (state.started && state.alive) {
-    updateAim();
+    updatePlayerPose(player, {
+      moving,
+      sprint: input.run,
+      dt,
+      firing: state.firingPose > 0,
+    });
+
+    updateDoors(level, dt);
+    updateEnemies(
+      enemies,
+      player.position,
+      dt,
+      (x, z) => isSolidAt(level, x, z),
+      onHitPlayer
+    );
+    updateProjectiles(dt);
+    updatePickups();
   }
 
-  const def = getEquippedDef();
-  updatePlayerAnim(player, {
-    moving,
-    sprint: input.sprint,
-    attacking: state.attacking,
-    attackT: state.attackT,
-    attackDuration: state.attackDuration,
-    weaponStyle: def.style,
-    aimPitch,
-    dt,
-  });
-
-  updateFx(dt, scene);
   updateCamera(dt);
   renderer.render(scene, camera);
 }
 
-setHealth(MAX_HP);
 refreshHud();
-bumpScore(0);
 tick();

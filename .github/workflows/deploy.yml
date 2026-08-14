@@ -2,7 +2,7 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [main]
+    branches: [main, feature/doom-v2]
   workflow_dispatch:
 
 permissions:
@@ -18,16 +18,49 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout v1 (main)
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: v1
+
+      - name: Checkout v2 (this ref)
+        uses: actions/checkout@v4
+        with:
+          path: v2
+
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
-      - run: npm ci
-      - run: npm run build
+          cache-dependency-path: |
+            v1/package-lock.json
+            v2/package-lock.json
+
+      - name: Build v1 site root
+        working-directory: v1
+        run: |
+          # Ensure v1 stays at /six-seven-man/
+          node -e "const fs=require('fs'); const p='vite.config.js'; let s=fs.readFileSync(p,'utf8'); if(!s.includes(\"/six-seven-man/\")) fs.writeFileSync(p, 'import { defineConfig } from \"vite\";\\nexport default defineConfig({ base: \"/six-seven-man/\" });\\n'); else { s=s.replace(/base:\\s*['\\\"][^'\\\"]+['\\\"]/, \"base: '/six-seven-man/'\"); fs.writeFileSync(p,s); }"
+          npm ci
+          npm run build
+
+      - name: Build v2 under /v2
+        working-directory: v2
+        run: |
+          npm ci
+          npm run build
+
+      - name: Assemble site
+        run: |
+          mkdir -p site
+          cp -R v1/dist/. site/
+          mkdir -p site/v2
+          cp -R v2/dist/. site/v2/
+
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: dist
+          path: site
 
   deploy:
     needs: build

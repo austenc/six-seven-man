@@ -8,35 +8,27 @@
   </head>
   <body>
     <div id="hud" class="hidden">
-      <div id="title">6-7 MAN</div>
-      <div id="health-wrap">
-        <span>HP</span>
-        <div id="health-bar"><div id="health-fill"></div></div>
-        <span id="health-text">100</span>
+      <div id="doom-hud">
+        <div class="hud-block">
+          <div class="hud-label">AMMO</div>
+          <div id="ammo-text">∞</div>
+        </div>
+        <div class="hud-block health-block">
+          <div class="hud-label">HEALTH</div>
+          <div id="health-text">100%</div>
+          <div id="face" aria-hidden="true">😠</div>
+        </div>
+        <div class="hud-block">
+          <div class="hud-label">ARMS</div>
+          <div id="weapon-text">PEA SHOOTER</div>
+        </div>
+        <div class="hud-block">
+          <div class="hud-label">LEVEL</div>
+          <div id="level-text">E1M1</div>
+        </div>
       </div>
-      <div id="weapon">Weapon: Fists</div>
-      <div id="score">SCORE 0</div>
-      <div id="combo" class="hidden">2x COMBO</div>
       <div id="message"></div>
-      <div id="hotbar">
-        <div class="hotbar-slot active" data-slot="0">
-          <span class="slot-key">1</span>
-          <span class="slot-name">Fists</span>
-        </div>
-        <div class="hotbar-slot locked" data-slot="1">
-          <span class="slot-key">2</span>
-          <span class="slot-name">???</span>
-        </div>
-        <div class="hotbar-slot locked" data-slot="2">
-          <span class="slot-key">3</span>
-          <span class="slot-name">???</span>
-        </div>
-        <div class="hotbar-slot locked" data-slot="3">
-          <span class="slot-key">4</span>
-          <span class="slot-name">—</span>
-        </div>
-      </div>
-      <div id="hint">WASD move · Aim with look · 1-4 hotbar · I inventory · E crate · Click attack</div>
+      <div id="hint">WASD move · Mouse look · Click fire · 1-3 guns · E use / exit · Shift run</div>
     </div>
 
     <div id="crosshair" class="hidden" aria-hidden="true">
@@ -45,21 +37,11 @@
       <span class="ch-dot"></span>
     </div>
     <div id="hurt-vignette"></div>
-
-    <div id="inventory" class="hidden">
-      <div class="inv-panel">
-        <div class="inv-header">
-          <h2>Inventory</h2>
-          <button type="button" id="inventory-close">Close (I)</button>
-        </div>
-        <p class="inv-blurb">Equip vegetable weapons. Asparagus Spear is two-handed.</p>
-        <div id="inventory-slots"></div>
-      </div>
-    </div>
+    <div id="muzzle-flash"></div>
 
     <div id="overlay" class="splash">
       <div class="splash-art">
-        <img src="/splash-67-man.png" alt="6-7 Man battles demon desserts with vegetable weapons" />
+        <img src="./splash-67-man.png" alt="6-7 Man battles demon desserts with vegetable weapons" />
         <div class="splash-shade"></div>
       </div>
       <div class="splash-copy">
@@ -67,10 +49,19 @@
         <h1>6-7 MAN</h1>
         <p class="splash-tag">Veggies vs. Demon Desserts</p>
         <p class="splash-blurb">
-          Bald. Tall. Pot belly out. Armed with carrot and asparagus against cake, ice cream, and cookie hellspawn.
+          Bald. Tall. Pot belly out. Armed with pea, corn, and cob against cake, ice cream, and cookie hellspawn.
         </p>
         <button id="start" type="button">RIP AND TEAR (INTO CAKE)</button>
-        <p class="sub">Click · WASD · Aim with mouse · Smash desserts</p>
+        <p class="sub">WASD · Mouse look · Click to fire veggie guns · E for doors/exit</p>
+      </div>
+    </div>
+
+    <div id="levelclear" class="hidden">
+      <div class="panel">
+        <p class="go-kicker">FLOOR CLEARED</p>
+        <h2 id="clear-title">E1M1 COMPLETE</h2>
+        <p id="clear-stats">Kills 0 · Time 0s</p>
+        <button id="next-level" type="button">NEXT FLOOR</button>
       </div>
     </div>
 
@@ -78,9 +69,18 @@
       <div class="gameover-panel">
         <p class="go-kicker">THE DESSERTS WON THIS ROUND</p>
         <h2>GAME OVER</h2>
-        <p id="go-score">SCORE 0</p>
+        <p id="go-score">Kills 0</p>
         <p class="go-blurb">6-7 Man got frosted. Shake it off and hop back in.</p>
         <button id="restart" type="button">TRY AGAIN</button>
+      </div>
+    </div>
+
+    <div id="win" class="hidden">
+      <div class="panel">
+        <p class="go-kicker">DEMON DESSERTS DEFEATED</p>
+        <h2>YOU WIN</h2>
+        <p id="win-stats">Nice shooting, tall man.</p>
+        <button id="play-again" type="button">PLAY AGAIN</button>
       </div>
     </div>
 
