@@ -1,6 +1,6 @@
 # 6-7 Man (Doom v2)
 
-Third-person Doom/Wolfenstein-style shooter. Kill demon desserts with vegetable guns.
+Classic **first-person raycaster** — original Doom / Wolfenstein look, veggie guns vs dessert demons.
 
 **Play v2:** https://austenc.github.io/six-seven-man/v2/
 
@@ -8,26 +8,19 @@ Third-person Doom/Wolfenstein-style shooter. Kill demon desserts with vegetable 
 
 ## Guns
 
-| Key | Weapon | Notes |
-|-----|--------|--------|
-| 1 | Pea Shooter | Fast pistol |
-| 2 | Corn Shotgun | Pellet spread |
-| 3 | Cob Launcher | Explosive rocket |
+| Key | Weapon |
+|-----|--------|
+| 1 | Pea Shooter |
+| 2 | Corn Shotgun |
+| 3 | Cob Launcher |
 
 ## Controls
 
-- **WASD** move · **Shift** run · **Mouse** look
-- **Click** fire · **E** open doors / exit pad
-- **1–3** switch guns
+- **WASD** move · **Mouse** / arrows turn · **Shift** run
+- **Click** fire · **E** or **Space** open doors / exit
+- **1–3** guns
 
 ## Levels
 
-- **E1M1** Kitchen of Torment
-- **E1M2** Freezer of the Damned
-
-## Local
-
-```bash
-npm install
-npm run dev
-```
+- **E1M1** Hangar of Hunger
+- **E1M2** Freezer Complex
