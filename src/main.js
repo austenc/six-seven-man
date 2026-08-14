@@ -1,6 +1,6 @@
-import { LEVELS, parseLevel, isBlocked } from "./maps.js";
+import { LEVELS, parseLevel, isBlocked, isNukage } from "./maps.js";
 import { createTextures, createSprites, drawMugshot } from "./textures.js";
-import { createRenderer, hitscan } from "./raycast.js";
+import { createRenderer } from "./raycast.js";
 import { WEAPONS } from "./weapons.js";
 import {
   unlockAudio,
@@ -36,6 +36,16 @@ const nextLevelBtn = document.getElementById("next-level");
 const winEl = document.getElementById("win");
 const winStats = document.getElementById("win-stats");
 const playAgainBtn = document.getElementById("play-again");
+const mobileEl = document.getElementById("mobile");
+const joyZone = document.getElementById("joy-zone");
+const joyKnob = document.getElementById("joy-knob");
+const btnShoot = document.getElementById("btn-shoot");
+const btnUse = document.getElementById("btn-use");
+
+const isTouchUI =
+  window.matchMedia("(pointer: coarse)").matches ||
+  window.matchMedia("(hover: none)").matches ||
+  "ontouchstart" in window;
 
 canvas.tabIndex = 0;
 
@@ -54,6 +64,7 @@ const state = {
   started: false,
   alive: true,
   hp: 100,
+  armor: 0,
   weaponIndex: 0,
   owned: new Set(["pea"]),
   ammo: { pea: 40, corn: 0, cob: 0 },
@@ -66,9 +77,11 @@ const state = {
   levelStart: 0,
   footT: 0,
   gunKick: 0,
+  muzzleT: 0,
+  nukeT: 0,
 };
 
-const player = { x: 1.5, y: 1.5, angle: 0, bob: 0 };
+const player = { x: 1.5, y: 1.5, angle: 0, bob: 0, nukage: false };
 let map = null;
 let doors = [];
 let enemies = [];
@@ -83,7 +96,13 @@ const input = {
   turnLeft: false,
   turnRight: false,
   run: false,
+  joyX: 0,
+  joyY: 0,
+  firing: false,
 };
+
+const joy = { active: false, pointerId: null, cx: 0, cy: 0 };
+const lookTouch = { id: null, lastX: 0 };
 
 function showMessage(text, dur = 2) {
   messageEl.textContent = text;
@@ -149,11 +168,13 @@ function loadLevel(index) {
     sprite:
       p.kind === "health"
         ? "health"
-        : p.kind === "pea"
-          ? "peaAmmo"
-          : p.kind === "shotgun"
-            ? "cornAmmo"
-            : "cobAmmo",
+        : p.kind === "armor"
+          ? "armor"
+          : p.kind === "pea"
+            ? "pea"
+            : p.kind === "shotgun"
+              ? "shotgun"
+              : "launcher",
     taken: false,
   }));
 
@@ -165,6 +186,7 @@ function startGame() {
   state.started = true;
   state.alive = true;
   state.hp = 100;
+  state.armor = 0;
   state.weaponIndex = 0;
   state.owned = new Set(["pea"]);
   state.ammo = { pea: 40, corn: 0, cob: 0 };
@@ -172,6 +194,8 @@ function startGame() {
   state.invuln = 0;
   state.totalKills = 0;
   state.gunKick = 0;
+  state.muzzleT = 0;
+  state.nukeT = 0;
 
   overlay.classList.add("hidden");
   gameoverEl.classList.add("hidden");
@@ -179,10 +203,13 @@ function startGame() {
   winEl.classList.add("hidden");
   hudEl.classList.remove("hidden");
   crosshairEl.classList.remove("hidden");
+  if (isTouchUI) mobileEl.classList.remove("hidden");
 
   loadLevel(0);
   canvas.focus();
-  requestAnimationFrame(() => canvas.requestPointerLock?.());
+  if (!isTouchUI) {
+    requestAnimationFrame(() => canvas.requestPointerLock?.());
+  }
 }
 
 function setHealth(hp) {
@@ -192,6 +219,7 @@ function setHealth(hp) {
     state.alive = false;
     document.exitPointerLock?.();
     crosshairEl.classList.add("hidden");
+    mobileEl.classList.add("hidden");
     goScoreEl.textContent = `Kills ${state.totalKills}`;
     gameoverEl.classList.remove("hidden");
     sfxHurt();
@@ -200,8 +228,14 @@ function setHealth(hp) {
 
 function onHurt(dmg, label) {
   if (state.invuln > 0 || !state.alive) return;
-  setHealth(state.hp - dmg);
-  state.invuln = 0.6;
+  let taken = dmg;
+  if (state.armor > 0) {
+    const absorbed = Math.min(state.armor, Math.ceil(dmg * 0.5));
+    state.armor -= absorbed;
+    taken = dmg - absorbed;
+  }
+  setHealth(state.hp - taken);
+  state.invuln = 0.55;
   sfxHurt();
   hurtVignette.classList.add("show");
   setTimeout(() => hurtVignette.classList.remove("show"), 160);
@@ -250,6 +284,7 @@ function tryUse() {
 function completeLevel() {
   document.exitPointerLock?.();
   crosshairEl.classList.add("hidden");
+  mobileEl.classList.add("hidden");
   const secs = ((performance.now() - state.levelStart) / 1000).toFixed(1);
   clearTitle.textContent = `${LEVELS[state.levelIndex].id} COMPLETE`;
   clearStats.textContent = `Kills ${state.kills} · Time ${secs}s`;
@@ -268,31 +303,28 @@ function fire() {
   state.ammo[w.ammoKey] -= w.ammoPerShot;
   state.cooldown = w.cooldown;
   state.gunKick = 1;
+  state.muzzleT = 0.08;
   sfxShoot(w.id === "pea" ? "pea" : w.id);
   refreshHud();
   muzzleFlash.classList.add("show");
-  setTimeout(() => muzzleFlash.classList.remove("show"), 50);
+  setTimeout(() => muzzleFlash.classList.remove("show"), 55);
 
-  if (w.projectile) {
+  const count = w.count || 1;
+  for (let i = 0; i < count; i++) {
+    const ang =
+      player.angle +
+      (count === 1 ? (Math.random() - 0.5) * w.spread : (i / (count - 1) - 0.5) * w.spread * 2);
     projectiles.push({
-      x: player.x,
-      y: player.y,
-      vx: Math.cos(player.angle) * 10,
-      vy: Math.sin(player.angle) * 10,
+      x: player.x + Math.cos(player.angle) * 0.35,
+      y: player.y + Math.sin(player.angle) * 0.35,
+      vx: Math.cos(ang) * w.speed,
+      vy: Math.sin(ang) * w.speed,
       damage: w.damage,
-      splash: w.splash,
-      life: 2,
+      splash: w.splash || 0,
+      life: 1.6,
+      sprite: w.projectileSprite,
+      owner: "player",
     });
-    return;
-  }
-
-  for (let i = 0; i < w.pellets; i++) {
-    const ang = player.angle + (Math.random() - 0.5) * w.spread * 2;
-    const saved = player.angle;
-    player.angle = ang;
-    const hit = hitscan(player, map, doors, enemies, w.range);
-    player.angle = saved;
-    if (hit) damageEnemy(hit, w.damage);
   }
 }
 
@@ -309,13 +341,13 @@ function damageEnemy(e, dmg) {
 }
 
 function explode(x, y, dmg, radius) {
-  sfxExplode();
+  if (radius > 0) sfxExplode();
   for (const e of enemies) {
     if (!e.alive) continue;
     const d = Math.hypot(e.x - x, e.y - y);
     if (d < radius) damageEnemy(e, dmg * (1 - d / radius));
   }
-  if (Math.hypot(player.x - x, player.y - y) < radius * 0.6) {
+  if (radius > 0 && Math.hypot(player.x - x, player.y - y) < radius * 0.6) {
     onHurt(Math.round(dmg * 0.2), "Cob blast");
   }
 }
@@ -349,6 +381,9 @@ function updatePickups() {
       if (p.kind === "health") {
         setHealth(state.hp + 25);
         showMessage("+25 HEALTH");
+      } else if (p.kind === "armor") {
+        state.armor = Math.min(100, state.armor + 50);
+        showMessage("+50 ARMOR");
       } else if (p.kind === "pea") {
         state.ammo.pea += 25;
         showMessage("+25 PEAS");
@@ -375,7 +410,7 @@ function entitiesForDraw() {
     ...projectiles.map((p) => ({
       x: p.x,
       y: p.y,
-      sprite: "cobAmmo",
+      sprite: p.sprite || "peaBall",
       alive: true,
     })),
   ];
@@ -402,8 +437,125 @@ function applyKey(e, pressed) {
 }
 
 function clearInput() {
-  Object.keys(input).forEach((k) => (input[k] = false));
+  Object.keys(input).forEach((k) => {
+    if (typeof input[k] === "boolean") input[k] = false;
+    if (typeof input[k] === "number") input[k] = 0;
+  });
+  input.joyX = 0;
+  input.joyY = 0;
+  input.firing = false;
 }
+
+function setJoyKnob(nx, ny) {
+  const max = 36;
+  joyKnob.style.transform = `translate(${nx * max}px, ${ny * max}px)`;
+}
+
+function onJoyStart(e) {
+  if (!state.started || !state.alive) return;
+  e.preventDefault();
+  const t = e.changedTouches ? e.changedTouches[0] : e;
+  const base = document.getElementById("joy-base").getBoundingClientRect();
+  joy.active = true;
+  joy.pointerId = t.identifier ?? "mouse";
+  joy.cx = base.left + base.width / 2;
+  joy.cy = base.top + base.height / 2;
+  onJoyMove(e);
+}
+
+function onJoyMove(e) {
+  if (!joy.active) return;
+  e.preventDefault();
+  const touches = e.changedTouches || [e];
+  for (const t of touches) {
+    if ((t.identifier ?? "mouse") !== joy.pointerId && joy.pointerId !== "mouse") continue;
+    const dx = t.clientX - joy.cx;
+    const dy = t.clientY - joy.cy;
+    const len = Math.hypot(dx, dy) || 1;
+    const max = 48;
+    const clamped = Math.min(1, len / max);
+    input.joyX = (dx / len) * clamped;
+    input.joyY = (dy / len) * clamped;
+    setJoyKnob(input.joyX, input.joyY);
+  }
+}
+
+function onJoyEnd(e) {
+  if (!joy.active) return;
+  const touches = e.changedTouches;
+  if (touches) {
+    let match = false;
+    for (const t of touches) {
+      if (t.identifier === joy.pointerId) match = true;
+    }
+    if (!match) return;
+  }
+  joy.active = false;
+  joy.pointerId = null;
+  input.joyX = 0;
+  input.joyY = 0;
+  setJoyKnob(0, 0);
+}
+
+joyZone.addEventListener("touchstart", onJoyStart, { passive: false });
+joyZone.addEventListener("touchmove", onJoyMove, { passive: false });
+joyZone.addEventListener("touchend", onJoyEnd, { passive: false });
+joyZone.addEventListener("touchcancel", onJoyEnd, { passive: false });
+
+btnShoot.addEventListener(
+  "touchstart",
+  (e) => {
+    e.preventDefault();
+    input.firing = true;
+    fire();
+  },
+  { passive: false }
+);
+btnShoot.addEventListener("touchend", () => {
+  input.firing = false;
+});
+btnShoot.addEventListener("touchcancel", () => {
+  input.firing = false;
+});
+btnUse.addEventListener(
+  "touchstart",
+  (e) => {
+    e.preventDefault();
+    tryUse();
+  },
+  { passive: false }
+);
+
+// Look / turn: drag on right half of screen (not on buttons)
+function onLookStart(e) {
+  if (!state.started || !state.alive || !isTouchUI) return;
+  const t = e.changedTouches[0];
+  if (t.clientX < window.innerWidth * 0.45) return;
+  if (e.target.closest("#mobile-actions") || e.target.closest("#joy-zone")) return;
+  lookTouch.id = t.identifier;
+  lookTouch.lastX = t.clientX;
+}
+
+function onLookMove(e) {
+  if (lookTouch.id == null) return;
+  for (const t of e.changedTouches) {
+    if (t.identifier !== lookTouch.id) continue;
+    e.preventDefault();
+    player.angle += (t.clientX - lookTouch.lastX) * 0.005;
+    lookTouch.lastX = t.clientX;
+  }
+}
+
+function onLookEnd(e) {
+  for (const t of e.changedTouches) {
+    if (t.identifier === lookTouch.id) lookTouch.id = null;
+  }
+}
+
+document.addEventListener("touchstart", onLookStart, { passive: true });
+document.addEventListener("touchmove", onLookMove, { passive: false });
+document.addEventListener("touchend", onLookEnd, { passive: true });
+document.addEventListener("touchcancel", onLookEnd, { passive: true });
 
 document.addEventListener("keydown", (e) => applyKey(e, true), { passive: false });
 document.addEventListener("keyup", (e) => applyKey(e, false), { passive: false });
@@ -421,7 +573,7 @@ document.addEventListener("mousemove", (e) => {
 });
 
 canvas.addEventListener("click", () => {
-  if (!state.started || !state.alive) return;
+  if (!state.started || !state.alive || isTouchUI) return;
   canvas.focus();
   canvas.requestPointerLock?.();
 });
@@ -446,8 +598,11 @@ nextLevelBtn.addEventListener("click", (e) => {
   }
   loadLevel(state.levelIndex + 1);
   crosshairEl.classList.remove("hidden");
+  if (isTouchUI) mobileEl.classList.remove("hidden");
   canvas.focus();
-  requestAnimationFrame(() => canvas.requestPointerLock?.());
+  if (!isTouchUI) {
+    requestAnimationFrame(() => canvas.requestPointerLock?.());
+  }
 });
 playAgainBtn.addEventListener("click", (e) => {
   e.preventDefault();
@@ -470,10 +625,13 @@ function tick(now) {
   }
 
   state.gunKick = Math.max(0, state.gunKick - dt * 4);
+  state.muzzleT = Math.max(0, state.muzzleT - dt);
 
   if (state.started && state.alive && map) {
     state.invuln = Math.max(0, state.invuln - dt);
     state.cooldown = Math.max(0, state.cooldown - dt);
+
+    if (input.firing) fire();
 
     if (input.turnLeft) player.angle -= 2.2 * dt;
     if (input.turnRight) player.angle += 2.2 * dt;
@@ -497,6 +655,13 @@ function tick(now) {
       mx += Math.cos(player.angle - Math.PI / 2);
       my += Math.sin(player.angle - Math.PI / 2);
     }
+    // Virtual joystick: Y forward/back, X strafe
+    if (Math.abs(input.joyX) > 0.12 || Math.abs(input.joyY) > 0.12) {
+      mx += Math.cos(player.angle) * -input.joyY;
+      my += Math.sin(player.angle) * -input.joyY;
+      mx += Math.cos(player.angle + Math.PI / 2) * input.joyX;
+      my += Math.sin(player.angle + Math.PI / 2) * input.joyX;
+    }
     const len = Math.hypot(mx, my);
     if (len > 0) {
       tryMove(player.x + (mx / len) * speed, player.y + (my / len) * speed);
@@ -508,18 +673,37 @@ function tick(now) {
       }
     }
 
-    // Projectiles
+    player.nukage = isNukage(map, player.x, player.y);
+    if (player.nukage) {
+      state.nukeT -= dt;
+      if (state.nukeT <= 0) {
+        onHurt(5, "Nukage");
+        state.nukeT = 0.7;
+      }
+    } else {
+      state.nukeT = 0.15;
+    }
+
+    // Projectiles — visible peas / kernels / cobs
     for (let i = projectiles.length - 1; i >= 0; i--) {
       const p = projectiles[i];
       p.life -= dt;
       p.x += p.vx * dt;
       p.y += p.vy * dt;
-      let boom = p.life <= 0 || isBlocked(map, p.x, p.y, doors);
+      let hitEnemy = null;
       for (const e of enemies) {
-        if (e.alive && Math.hypot(e.x - p.x, e.y - p.y) < 0.5) boom = true;
+        if (e.alive && Math.hypot(e.x - p.x, e.y - p.y) < 0.45) {
+          hitEnemy = e;
+          break;
+        }
       }
-      if (boom) {
-        explode(p.x, p.y, p.damage, p.splash);
+      const wall = isBlocked(map, p.x, p.y, doors);
+      if (p.life <= 0 || wall || hitEnemy) {
+        if (p.splash > 0) {
+          explode(p.x, p.y, p.damage, p.splash);
+        } else if (hitEnemy) {
+          damageEnemy(hitEnemy, p.damage);
+        }
         projectiles.splice(i, 1);
       }
     }
@@ -533,15 +717,15 @@ function tick(now) {
       doors,
       entitiesForDraw(),
       weapon().id,
-      state.gunKick
+      state.gunKick,
+      state.muzzleT > 0
     );
   } else if (!state.started) {
-    // Idle dark screen behind splash
     const ctx = canvas.getContext("2d");
     ctx.fillStyle = "#120c0a";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
   } else {
-    renderer.render(player, map, doors, entitiesForDraw(), weapon().id, 0);
+    renderer.render(player, map, doors, entitiesForDraw(), weapon().id, 0, false);
   }
 }
 

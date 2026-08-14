@@ -1,9 +1,9 @@
-/** Procedural old-school Doom-ish textures (64×64 indexed-look canvases). */
+/** Procedural Doom-ish textures & sprites — stone castle + veggie guns. */
 
-function makeCanvas(size = 64) {
+function makeCanvas(w = 64, h = 64) {
   const c = document.createElement("canvas");
-  c.width = size;
-  c.height = size;
+  c.width = w;
+  c.height = h;
   return c;
 }
 
@@ -14,148 +14,152 @@ function noise(x, y, seed = 0) {
 
 export function createTextures() {
   return {
-    tech: wallTech(),
-    rust: wallRust(),
-    tile: wallTile(),
-    freezer: wallFreezer(),
+    brick: wallBrick(),
+    stone: wallStone(),
+    stone2: wallStone2(),
+    support: wallSupport(),
     door: wallDoor(),
     exit: wallExit(),
-    floor: floorDirt(),
+    floor: floorStone(),
+    nukage: floorNukage(),
     ceil: ceilDark(),
   };
 }
 
-function wallTech() {
+function wallBrick() {
   const c = makeCanvas();
   const g = c.getContext("2d");
-  // Base metal grey-brown like Doom techbase
-  for (let y = 0; y < 64; y++) {
-    for (let x = 0; x < 64; x++) {
-      const n = noise(x, y, 1);
-      const v = 70 + n * 40;
-      g.fillStyle = `rgb(${v},${v * 0.75},${v * 0.55})`;
-      g.fillRect(x, y, 1, 1);
+  g.fillStyle = "#5a4030";
+  g.fillRect(0, 0, 64, 64);
+  for (let row = 0; row < 8; row++) {
+    const off = row % 2 === 0 ? 0 : 8;
+    for (let col = -1; col < 5; col++) {
+      const x = col * 16 + off;
+      const y = row * 8;
+      const n = noise(col + 3, row, 1);
+      g.fillStyle = `rgb(${110 + n * 40},${70 + n * 20},${45})`;
+      g.fillRect(x + 1, y + 1, 14, 6);
+      g.strokeStyle = "#2a1810";
+      g.strokeRect(x, y, 16, 8);
     }
-  }
-  // Panel lines
-  g.strokeStyle = "#2a1810";
-  g.lineWidth = 2;
-  g.strokeRect(2, 2, 60, 60);
-  g.strokeRect(8, 8, 48, 48);
-  // Red hazard strip (Doom computer panel vibe)
-  g.fillStyle = "#8b1a1a";
-  g.fillRect(12, 28, 40, 8);
-  g.fillStyle = "#c9a227";
-  for (let i = 0; i < 5; i++) g.fillRect(14 + i * 8, 30, 4, 4);
-  // Rivets
-  g.fillStyle = "#1a1008";
-  for (const [x, y] of [
-    [6, 6],
-    [58, 6],
-    [6, 58],
-    [58, 58],
-  ]) {
-    g.beginPath();
-    g.arc(x, y, 2, 0, Math.PI * 2);
-    g.fill();
   }
   return c;
 }
 
-function wallRust() {
+function wallStone() {
   const c = makeCanvas();
   const g = c.getContext("2d");
   for (let y = 0; y < 64; y++) {
     for (let x = 0; x < 64; x++) {
       const n = noise(x, y, 2);
-      const r = 90 + n * 50;
-      g.fillStyle = `rgb(${r},${40 + n * 20},${25})`;
+      const v = 95 + n * 45;
+      g.fillStyle = `rgb(${v},${v * 0.85},${v * 0.7})`;
       g.fillRect(x, y, 1, 1);
     }
   }
-  g.fillStyle = "#5a2010";
-  g.fillRect(0, 0, 64, 4);
-  g.fillRect(0, 60, 64, 4);
-  g.fillStyle = "#3a1008";
-  for (let i = 0; i < 8; i++) g.fillRect(i * 8, 20 + (i % 3) * 6, 7, 3);
+  g.strokeStyle = "#3a3028";
+  g.lineWidth = 2;
+  g.strokeRect(1, 1, 30, 30);
+  g.strokeRect(32, 1, 30, 30);
+  g.strokeRect(1, 32, 30, 30);
+  g.strokeRect(32, 32, 30, 30);
   return c;
 }
 
-function wallTile() {
-  const c = makeCanvas();
-  const g = c.getContext("2d");
-  g.fillStyle = "#6a5a4a";
-  g.fillRect(0, 0, 64, 64);
-  for (let ty = 0; ty < 4; ty++) {
-    for (let tx = 0; tx < 4; tx++) {
-      const n = noise(tx, ty, 3);
-      g.fillStyle = `rgb(${120 + n * 30},${100 + n * 20},${80})`;
-      g.fillRect(tx * 16 + 1, ty * 16 + 1, 14, 14);
-      g.strokeStyle = "#2a2018";
-      g.strokeRect(tx * 16, ty * 16, 16, 16);
-    }
-  }
-  return c;
-}
-
-function wallFreezer() {
+function wallStone2() {
   const c = makeCanvas();
   const g = c.getContext("2d");
   for (let y = 0; y < 64; y++) {
     for (let x = 0; x < 64; x++) {
-      const n = noise(x, y, 4);
-      const b = 90 + n * 50;
-      g.fillStyle = `rgb(${b * 0.55},${b * 0.7},${b})`;
+      const n = noise(x, y, 7);
+      const v = 70 + n * 35;
+      g.fillStyle = `rgb(${v * 0.9},${v * 0.75},${v * 0.55})`;
       g.fillRect(x, y, 1, 1);
     }
   }
-  g.strokeStyle = "#cfe8ff";
-  g.lineWidth = 2;
-  g.strokeRect(4, 4, 56, 56);
-  g.fillStyle = "rgba(200,230,255,0.25)";
-  g.fillRect(10, 10, 20, 44);
+  g.fillStyle = "#4a3828";
+  g.fillRect(0, 20, 64, 4);
+  g.fillRect(0, 44, 64, 4);
+  return c;
+}
+
+function wallSupport() {
+  const c = makeCanvas();
+  const g = c.getContext("2d");
+  g.fillStyle = "#3a2a1a";
+  g.fillRect(0, 0, 64, 64);
+  g.fillStyle = "#6a5030";
+  g.fillRect(8, 0, 16, 64);
+  g.fillRect(40, 0, 16, 64);
+  g.fillStyle = "#8a6a40";
+  g.fillRect(10, 0, 4, 64);
+  g.fillRect(42, 0, 4, 64);
   return c;
 }
 
 function wallDoor() {
+  // Classic Doom-style blue tech door — unmistakable
   const c = makeCanvas();
   const g = c.getContext("2d");
-  g.fillStyle = "#5a4018";
+  g.fillStyle = "#1a2038";
   g.fillRect(0, 0, 64, 64);
-  for (let y = 0; y < 64; y += 8) {
-    g.fillStyle = y % 16 === 0 ? "#8b6914" : "#6a5010";
-    g.fillRect(4, y, 56, 7);
+  // Vertical ribs
+  for (let i = 0; i < 4; i++) {
+    g.fillStyle = i % 2 === 0 ? "#3a5080" : "#2a3870";
+    g.fillRect(6 + i * 14, 4, 12, 56);
   }
+  // Yellow warning stripe
   g.fillStyle = "#c9a227";
-  g.fillRect(28, 26, 8, 12);
+  g.fillRect(0, 26, 64, 12);
   g.fillStyle = "#1a1008";
-  g.fillRect(30, 28, 4, 8);
+  g.font = "bold 9px monospace";
+  g.fillText("DOOR", 18, 35);
+  // Handles
+  g.fillStyle = "#e8d080";
+  g.fillRect(28, 14, 8, 6);
+  g.fillRect(28, 44, 8, 6);
+  g.strokeStyle = "#88aaff";
+  g.lineWidth = 3;
+  g.strokeRect(2, 2, 60, 60);
   return c;
 }
 
 function wallExit() {
   const c = makeCanvas();
   const g = c.getContext("2d");
-  g.fillStyle = "#14331a";
+  g.fillStyle = "#0a2810";
   g.fillRect(0, 0, 64, 64);
   g.fillStyle = "#33ff66";
-  g.font = "bold 14px monospace";
+  g.font = "bold 12px monospace";
   g.fillText("EXIT", 16, 28);
   g.fillText(">>>", 18, 46);
   g.strokeStyle = "#1a8b3a";
-  g.lineWidth = 3;
-  g.strokeRect(3, 3, 58, 58);
+  g.lineWidth = 4;
+  g.strokeRect(2, 2, 60, 60);
   return c;
 }
 
-function floorDirt() {
+function floorStone() {
   const c = makeCanvas();
   const g = c.getContext("2d");
   for (let y = 0; y < 64; y++) {
     for (let x = 0; x < 64; x++) {
       const n = noise(x, y, 5);
-      const v = 45 + n * 35;
-      g.fillStyle = `rgb(${v},${v * 0.7},${v * 0.45})`;
+      const v = 50 + n * 30;
+      g.fillStyle = `rgb(${v},${v * 0.75},${v * 0.5})`;
+      g.fillRect(x, y, 1, 1);
+    }
+  }
+  return c;
+}
+
+function floorNukage() {
+  const c = makeCanvas();
+  const g = c.getContext("2d");
+  for (let y = 0; y < 64; y++) {
+    for (let x = 0; x < 64; x++) {
+      const n = noise(x, y, 9);
+      g.fillStyle = `rgb(${20 + n * 30},${120 + n * 80},${30 + n * 20})`;
       g.fillRect(x, y, 1, 1);
     }
   }
@@ -168,7 +172,7 @@ function ceilDark() {
   for (let y = 0; y < 64; y++) {
     for (let x = 0; x < 64; x++) {
       const n = noise(x, y, 6);
-      const v = 25 + n * 20;
+      const v = 28 + n * 18;
       g.fillStyle = `rgb(${v},${v * 0.6},${v * 0.5})`;
       g.fillRect(x, y, 1, 1);
     }
@@ -176,20 +180,26 @@ function ceilDark() {
   return c;
 }
 
-/** Tiny enemy / pickup sprites drawn as pixel canvases */
 export function createSprites() {
   return {
     cake: spriteCake(),
     ice: spriteIce(),
     cookie: spriteCookie(),
-    health: spritePickup("#e74c3c", "+"),
-    peaAmmo: spritePickup("#6ab04c", "P"),
-    cornAmmo: spritePickup("#f1c40f", "C"),
-    cobAmmo: spritePickup("#e67e22", "R"),
+    health: spriteMedkit(),
+    armor: spriteArmor(),
+    pea: spriteGunPickupPea(),
+    shotgun: spriteGunPickupCorn(),
+    launcher: spriteGunPickupCob(),
+    peaBall: spritePeaBall(),
+    cornKernel: spriteCornKernel(),
+    cobRocket: spriteCobRocket(),
     weapons: {
-      pea: weaponPea(),
-      shotgun: weaponCorn(),
-      launcher: weaponCob(),
+      pea: weaponPea(false),
+      peaFlash: weaponPea(true),
+      shotgun: weaponCorn(false),
+      shotgunFlash: weaponCorn(true),
+      launcher: weaponCob(false),
+      launcherFlash: weaponCob(true),
     },
   };
 }
@@ -205,7 +215,6 @@ function spriteCake() {
   g.fillRect(14, 16, 36, 10);
   g.fillStyle = "#f5e6c8";
   g.fillRect(12, 12, 40, 6);
-  // eyes
   g.fillStyle = "#ff2222";
   g.fillRect(20, 30, 6, 6);
   g.fillRect(38, 30, 6, 6);
@@ -268,154 +277,340 @@ function spriteCookie() {
   return c;
 }
 
-function spritePickup(color, letter) {
+function spriteMedkit() {
   const c = makeCanvas(32);
   const g = c.getContext("2d");
-  g.fillStyle = color;
-  g.fillRect(4, 4, 24, 24);
+  g.fillStyle = "#e8e8e8";
+  g.fillRect(4, 8, 24, 18);
+  g.fillStyle = "#c0392b";
+  g.fillRect(14, 10, 4, 14);
+  g.fillRect(8, 15, 16, 4);
   g.strokeStyle = "#111";
-  g.strokeRect(4, 4, 24, 24);
-  g.fillStyle = "#111";
-  g.font = "bold 14px monospace";
-  g.fillText(letter, 11, 22);
+  g.strokeRect(4, 8, 24, 18);
   return c;
 }
 
-function weaponPea() {
-  // Gun only occupies bottom ~1/3 of the 200px view
-  const c = document.createElement("canvas");
-  c.width = 320;
-  c.height = 200;
+function spriteArmor() {
+  const c = makeCanvas(32);
   const g = c.getContext("2d");
+  g.fillStyle = "#2ecc71";
+  g.fillRect(6, 6, 20, 22);
+  g.fillStyle = "#27ae60";
+  g.fillRect(10, 10, 12, 14);
+  g.fillStyle = "#fff";
+  g.font = "bold 10px monospace";
+  g.fillText("A", 12, 22);
+  return c;
+}
 
-  // Right-hand Doom-style pistol silhouette — pea themed
-  // Grip
-  g.fillStyle = "#1a3010";
-  g.fillRect(168, 168, 28, 32);
-  g.fillStyle = "#2d4a1a";
-  g.fillRect(170, 170, 24, 28);
-
-  // Receiver / body
+function spriteGunPickupPea() {
+  const c = makeCanvas(48);
+  const g = c.getContext("2d");
+  // Mini pistol + pea pod
   g.fillStyle = "#3d6b2d";
-  g.fillRect(148, 148, 70, 24);
+  g.fillRect(8, 18, 28, 10);
   g.fillStyle = "#2a5020";
-  g.fillRect(150, 150, 66, 8);
-
-  // Pea magazine hanging down
+  g.fillRect(30, 20, 12, 6);
+  g.fillStyle = "#1a3010";
+  g.fillRect(12, 28, 8, 12);
   g.fillStyle = "#6ab04c";
-  g.fillRect(158, 170, 18, 22);
+  g.beginPath();
+  g.ellipse(18, 14, 10, 6, 0, 0, Math.PI * 2);
+  g.fill();
   g.fillStyle = "#8fd46a";
-  g.fillRect(160, 172, 6, 6);
-  g.fillRect(168, 178, 6, 6);
-  g.fillRect(160, 184, 6, 6);
+  g.beginPath();
+  g.arc(14, 14, 2, 0, Math.PI * 2);
+  g.arc(20, 14, 2, 0, Math.PI * 2);
+  g.fill();
+  return c;
+}
 
-  // Barrel
-  g.fillStyle = "#4a8030";
-  g.fillRect(128, 152, 24, 12);
-  g.fillStyle = "#8fd46a";
-  g.fillRect(118, 154, 12, 8);
+function spriteGunPickupCorn() {
+  const c = makeCanvas(48);
+  const g = c.getContext("2d");
+  g.fillStyle = "#c9a227";
+  g.fillRect(6, 20, 32, 10);
+  g.fillStyle = "#ffe082";
+  for (let i = 0; i < 5; i++) g.fillRect(10 + i * 5, 22, 4, 6);
+  g.fillStyle = "#5a4010";
+  g.fillRect(30, 30, 8, 10);
+  g.fillStyle = "#1e8449";
+  g.fillRect(34, 14, 8, 8);
+  return c;
+}
 
-  // Front pea "muzzle"
+function spriteGunPickupCob() {
+  const c = makeCanvas(48);
+  const g = c.getContext("2d");
+  g.fillStyle = "#d68910";
+  g.fillRect(4, 18, 36, 12);
+  g.fillStyle = "#e67e22";
+  for (let i = 0; i < 6; i++) g.fillRect(8 + i * 5, 20, 4, 8);
+  g.fillStyle = "#1e8449";
+  g.beginPath();
+  g.moveTo(4, 18);
+  g.lineTo(0, 24);
+  g.lineTo(4, 30);
+  g.fill();
+  return c;
+}
+
+function spritePeaBall() {
+  const c = makeCanvas(24);
+  const g = c.getContext("2d");
+  g.fillStyle = "#3d6b20";
+  g.beginPath();
+  g.arc(12, 12, 10, 0, Math.PI * 2);
+  g.fill();
   g.fillStyle = "#7dce4a";
   g.beginPath();
-  g.arc(118, 158, 7, 0, Math.PI * 2);
+  g.arc(12, 12, 8, 0, Math.PI * 2);
   g.fill();
-  g.fillStyle = "#2d5a2d";
+  g.fillStyle = "#c8ff90";
   g.beginPath();
-  g.arc(118, 158, 3, 0, Math.PI * 2);
+  g.arc(9, 9, 3, 0, Math.PI * 2);
   g.fill();
-
-  // Sight
-  g.fillStyle = "#1a3010";
-  g.fillRect(190, 144, 4, 6);
-  g.fillRect(152, 146, 3, 4);
-
   return c;
 }
 
-function weaponCorn() {
+function spriteCornKernel() {
+  const c = makeCanvas(18);
+  const g = c.getContext("2d");
+  g.fillStyle = "#b8860b";
+  g.beginPath();
+  g.ellipse(9, 9, 7, 8, 0, 0, Math.PI * 2);
+  g.fill();
+  g.fillStyle = "#f4d03f";
+  g.beginPath();
+  g.ellipse(9, 9, 5, 6, 0, 0, Math.PI * 2);
+  g.fill();
+  g.fillStyle = "#ffe082";
+  g.fillRect(6, 5, 4, 4);
+  return c;
+}
+
+function spriteCobRocket() {
+  const c = makeCanvas(40);
+  const g = c.getContext("2d");
+  g.fillStyle = "#a04000";
+  g.fillRect(4, 12, 26, 16);
+  g.fillStyle = "#e67e22";
+  g.fillRect(6, 14, 22, 12);
+  g.fillStyle = "#ffe082";
+  for (let i = 0; i < 4; i++) g.fillRect(8 + i * 5, 16, 3, 8);
+  g.fillStyle = "#1e8449";
+  g.beginPath();
+  g.moveTo(30, 12);
+  g.lineTo(40, 20);
+  g.lineTo(30, 28);
+  g.fill();
+  g.fillStyle = "#ff4422";
+  g.beginPath();
+  g.moveTo(4, 14);
+  g.lineTo(0, 20);
+  g.lineTo(4, 26);
+  g.fill();
+  return c;
+}
+
+function weaponPea(flash) {
   const c = document.createElement("canvas");
   c.width = 320;
   c.height = 200;
   const g = c.getContext("2d");
 
-  // Pump shotgun silhouette — corn cob receiver
-  g.fillStyle = "#5a4010";
-  g.fillRect(175, 170, 32, 30);
+  // Foreshortened Doom pistol silhouette — bottom third
+  g.fillStyle = "#c4896a";
+  g.beginPath();
+  g.moveTo(168, 200);
+  g.lineTo(168, 172);
+  g.lineTo(210, 168);
+  g.lineTo(220, 200);
+  g.fill();
 
+  // Grip
+  g.fillStyle = "#1a2010";
+  g.fillRect(172, 162, 28, 32);
+  g.fillStyle = "#2a3820";
+  g.fillRect(175, 165, 8, 26);
+
+  // Receiver
+  g.fillStyle = "#3d5a28";
+  g.fillRect(120, 148, 88, 22);
+  g.fillStyle = "#2a4018";
+  g.fillRect(122, 150, 84, 6);
+  g.fillStyle = "#4a6a38";
+  g.fillRect(122, 162, 84, 4);
+
+  // Pea pod mag on top
+  g.fillStyle = "#4a8030";
+  g.beginPath();
+  g.ellipse(158, 142, 32, 12, 0, 0, Math.PI * 2);
+  g.fill();
+  g.fillStyle = "#6ab04c";
+  g.beginPath();
+  g.ellipse(158, 140, 28, 9, 0, 0, Math.PI * 2);
+  g.fill();
+  g.fillStyle = "#9fd86a";
+  for (const px of [142, 158, 174]) {
+    g.beginPath();
+    g.arc(px, 140, 4, 0, Math.PI * 2);
+    g.fill();
+  }
+
+  // Barrel
+  g.fillStyle = "#3a5020";
+  g.fillRect(88, 152, 36, 12);
+  g.fillStyle = "#101808";
+  g.fillRect(84, 154, 8, 8);
+
+  // Muzzle pea
+  g.fillStyle = "#7dce4a";
+  g.beginPath();
+  g.arc(86, 152, 6, 0, Math.PI * 2);
+  g.fill();
+
+  if (flash) {
+    g.fillStyle = "#ffffcc";
+    g.beginPath();
+    g.moveTo(84, 158);
+    g.lineTo(48, 142);
+    g.lineTo(54, 158);
+    g.lineTo(48, 174);
+    g.closePath();
+    g.fill();
+    g.fillStyle = "#ff9944";
+    g.beginPath();
+    g.arc(62, 158, 14, 0, Math.PI * 2);
+    g.fill();
+    g.fillStyle = "#ffff88";
+    g.beginPath();
+    g.arc(58, 158, 6, 0, Math.PI * 2);
+    g.fill();
+  }
+  return c;
+}
+
+function weaponCorn(flash) {
+  const c = document.createElement("canvas");
+  c.width = 320;
+  c.height = 200;
+  const g = c.getContext("2d");
+
+  g.fillStyle = "#c4896a";
+  g.beginPath();
+  g.moveTo(178, 200);
+  g.lineTo(178, 170);
+  g.lineTo(228, 166);
+  g.lineTo(236, 200);
+  g.fill();
+
+  g.fillStyle = "#4a3010";
+  g.fillRect(182, 164, 34, 30);
+
+  // Pump shotgun body as corn cob
+  g.fillStyle = "#a07818";
+  g.fillRect(100, 146, 112, 24);
   g.fillStyle = "#c9a227";
-  g.fillRect(130, 152, 100, 22);
-
-  // Corn kernel detail on receiver
+  g.fillRect(104, 148, 104, 20);
   g.fillStyle = "#ffe082";
-  for (let i = 0; i < 8; i++) {
+  for (let i = 0; i < 10; i++) {
     for (let j = 0; j < 2; j++) {
-      g.fillRect(145 + i * 9, 156 + j * 8, 7, 6);
+      g.fillRect(110 + i * 9, 152 + j * 8, 7, 6);
     }
   }
 
-  // Barrel
-  g.fillStyle = "#8a7010";
-  g.fillRect(95, 156, 40, 12);
-  g.fillStyle = "#f4d03f";
-  g.fillRect(88, 158, 10, 8);
+  // Dual barrel
+  g.fillStyle = "#6a5810";
+  g.fillRect(68, 150, 36, 16);
+  g.fillStyle = "#101008";
+  g.fillRect(64, 152, 8, 5);
+  g.fillRect(64, 160, 8, 5);
 
-  // Leaf tip / foresight
   g.fillStyle = "#1e8449";
-  g.fillRect(198, 146, 14, 10);
   g.beginPath();
-  g.moveTo(212, 146);
-  g.lineTo(222, 151);
-  g.lineTo(212, 156);
+  g.moveTo(205, 146);
+  g.lineTo(230, 138);
+  g.lineTo(220, 158);
   g.fill();
 
+  if (flash) {
+    g.fillStyle = "#fff0a0";
+    g.beginPath();
+    g.arc(58, 158, 16, 0, Math.PI * 2);
+    g.fill();
+    g.fillStyle = "#ffcc44";
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2;
+      g.beginPath();
+      g.moveTo(58, 158);
+      g.lineTo(58 + Math.cos(a) * 30, 158 + Math.sin(a) * 18);
+      g.lineTo(58 + Math.cos(a + 0.35) * 18, 158 + Math.sin(a + 0.35) * 10);
+      g.fill();
+    }
+  }
   return c;
 }
 
-function weaponCob() {
+function weaponCob(flash) {
   const c = document.createElement("canvas");
   c.width = 320;
   c.height = 200;
   const g = c.getContext("2d");
 
-  // Rocket launcher — whole cob on shoulder
-  g.fillStyle = "#5a3010";
-  g.fillRect(170, 172, 36, 28);
-
-  g.fillStyle = "#d68910";
-  g.fillRect(110, 150, 120, 26);
-
-  // Cob rows
-  g.fillStyle = "#e67e22";
-  for (let i = 0; i < 10; i++) {
-    g.fillRect(120 + i * 10, 154, 8, 8);
-    g.fillRect(125 + i * 10, 164, 8, 8);
-  }
-
-  // Green husk tip (nose)
-  g.fillStyle = "#1e8449";
+  g.fillStyle = "#c4896a";
   g.beginPath();
-  g.moveTo(110, 150);
-  g.lineTo(90, 163);
-  g.lineTo(110, 176);
+  g.moveTo(190, 200);
+  g.lineTo(190, 168);
+  g.lineTo(240, 164);
+  g.lineTo(248, 200);
   g.fill();
 
-  // Tube back
-  g.fillStyle = "#8a5010";
-  g.fillRect(220, 154, 24, 18);
+  g.fillStyle = "#4a2810";
+  g.fillRect(194, 162, 36, 32);
 
+  // RPG tube = giant cob
+  g.fillStyle = "#a05010";
+  g.fillRect(88, 144, 140, 28);
+  g.fillStyle = "#d68910";
+  g.fillRect(92, 148, 132, 20);
+  g.fillStyle = "#e67e22";
+  for (let i = 0; i < 12; i++) {
+    g.fillRect(98 + i * 10, 150, 8, 7);
+    g.fillRect(102 + i * 10, 160, 8, 7);
+  }
+
+  g.fillStyle = "#1e8449";
+  g.beginPath();
+  g.moveTo(88, 144);
+  g.lineTo(60, 158);
+  g.lineTo(88, 172);
+  g.fill();
+
+  g.fillStyle = "#6a4010";
+  g.fillRect(224, 150, 28, 16);
+  g.fillStyle = "#201008";
+  g.fillRect(246, 154, 8, 8);
+
+  if (flash) {
+    g.fillStyle = "#ff5522";
+    g.beginPath();
+    g.arc(54, 158, 18, 0, Math.PI * 2);
+    g.fill();
+    g.fillStyle = "#ffff88";
+    g.beginPath();
+    g.arc(48, 158, 9, 0, Math.PI * 2);
+    g.fill();
+  }
   return c;
 }
 
-/** Doom-style mugshot: bald 6-7 Man + pot belly. status: ok | hurt | bad */
 export function drawMugshot(canvas, status = "ok") {
   const g = canvas.getContext("2d");
   const w = canvas.width;
   const h = canvas.height;
   g.imageSmoothingEnabled = false;
   g.clearRect(0, 0, w, h);
-
-  // Backdrop
   g.fillStyle = "#1a1008";
   g.fillRect(0, 0, w, h);
   g.fillStyle = "#2a1810";
@@ -424,7 +619,6 @@ export function drawMugshot(canvas, status = "ok") {
   const skin = status === "bad" ? "#c08070" : "#e0a888";
   const shirt = "#2f6db5";
 
-  // Pot belly (signature) — hangs below shirt
   g.fillStyle = skin;
   g.beginPath();
   g.ellipse(w * 0.5, h * 0.78, w * 0.28, h * 0.18, 0, 0, Math.PI * 2);
@@ -433,26 +627,20 @@ export function drawMugshot(canvas, status = "ok") {
   g.ellipse(w * 0.5, h * 0.82, w * 0.18, h * 0.1, 0, 0, Math.PI * 2);
   g.fill();
 
-  // Shirt torso (short — belly shows)
   g.fillStyle = shirt;
   g.fillRect(w * 0.22, h * 0.42, w * 0.56, h * 0.28);
 
-  // Neck
   g.fillStyle = skin;
   g.fillRect(w * 0.42, h * 0.34, w * 0.16, h * 0.12);
-
-  // Bald head
   g.beginPath();
   g.ellipse(w * 0.5, h * 0.26, w * 0.22, h * 0.2, 0, 0, Math.PI * 2);
   g.fill();
 
-  // Bald shine
   g.fillStyle = "#f5d0b8";
   g.beginPath();
   g.ellipse(w * 0.56, h * 0.18, w * 0.06, h * 0.04, 0.3, 0, Math.PI * 2);
   g.fill();
 
-  // Eyes
   if (status === "hurt") {
     g.fillStyle = "#111";
     g.fillRect(w * 0.38, h * 0.24, w * 0.08, h * 0.02);
@@ -466,7 +654,6 @@ export function drawMugshot(canvas, status = "ok") {
     g.fillRect(w * 0.56, h * 0.24, w * 0.04, h * 0.04);
   }
 
-  // Angry brows / mouth
   g.fillStyle = "#3b0a0a";
   if (status === "ok") {
     g.fillRect(w * 0.36, h * 0.18, w * 0.1, h * 0.025);
@@ -485,9 +672,7 @@ export function drawMugshot(canvas, status = "ok") {
     g.fillRect(w * 0.4, h * 0.3, w * 0.2, h * 0.05);
   }
 
-  // Ear nubs
   g.fillStyle = skin;
   g.fillRect(w * 0.26, h * 0.24, w * 0.05, h * 0.08);
   g.fillRect(w * 0.69, h * 0.24, w * 0.05, h * 0.08);
 }
-

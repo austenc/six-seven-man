@@ -41,7 +41,7 @@ export function createRenderer(canvas, textures, sprites) {
   }
 
   function sampleTex(name, u, v, sideShade) {
-    const td = texData[name] || texData.tech;
+    const td = texData[name] || texData.brick;
     let tx = Math.floor(u * TEX) & 63;
     let ty = Math.floor(v * TEX) & 63;
     const i = (ty * TEX + tx) * 4;
@@ -56,16 +56,18 @@ export function createRenderer(canvas, textures, sprites) {
     return [r, g, b];
   }
 
-  function render(player, map, doors, entities, weaponId, gunKick) {
+  function render(player, map, doors, entities, weaponId, gunKick, muzzleOn) {
     // Ceiling / floor flat (fast Doom look)
     for (let y = 0; y < H; y++) {
       const isCeil = y < H / 2;
       const shadeY = isCeil
         ? 0.25 + (y / (H / 2)) * 0.15
         : 0.2 + ((H - y) / (H / 2)) * 0.25;
-      const r = isCeil ? (30 * shadeY) | 0 : (55 * shadeY) | 0;
-      const g = isCeil ? (18 * shadeY) | 0 : (38 * shadeY) | 0;
-      const b = isCeil ? (14 * shadeY) | 0 : (22 * shadeY) | 0;
+      // Slight green tint near bottom if standing in nukage (passed via player.nukage)
+      const nuke = player.nukage ? 1 : 0;
+      const r = isCeil ? (30 * shadeY) | 0 : ((55 + nuke * 10) * shadeY) | 0;
+      const g = isCeil ? (18 * shadeY) | 0 : ((38 + nuke * 40) * shadeY) | 0;
+      const b = isCeil ? (14 * shadeY) | 0 : ((22 - nuke * 8) * shadeY) | 0;
       for (let x = 0; x < W; x++) setPixel(x, y, r, g, b);
     }
 
@@ -164,6 +166,21 @@ export function createRenderer(canvas, textures, sprites) {
         const [r, g, b] = shade(r0, g0, b0, perpWallDist);
         setPixel(x, y, r, g, b);
       }
+
+      // Floor cast under the wall — shows nukage vs stone
+      for (let y = drawEnd + 1; y < H; y++) {
+        const rowDist = H / (2 * y - H);
+        const floorX = player.x + rowDist * rayDirX;
+        const floorY = player.y + rowDist * rayDirY;
+        const cellX = Math.floor(floorX);
+        const cellY = Math.floor(floorY);
+        const fName = map.floorTex?.[cellY]?.[cellX] || "floor";
+        const fx = floorX - cellX;
+        const fy = floorY - cellY;
+        const [r0, g0, b0] = sampleTex(fName, fx, fy, false);
+        const [r, g, b] = shade(r0, g0, b0, rowDist * 1.15);
+        setPixel(x, y, r, g, b);
+      }
     }
 
     bctx.putImageData(img, 0, 0);
@@ -222,8 +239,9 @@ export function createRenderer(canvas, textures, sprites) {
       }
     }
 
-    // Weapon overlay — stays in bottom third; slight walk bob / recoil
-    const gun = sprites.weapons[weaponId] || sprites.weapons.pea;
+    // Weapon overlay — bottom third; flash frame when firing
+    const gunKey = muzzleOn ? `${weaponId}Flash` : weaponId;
+    const gun = sprites.weapons[gunKey] || sprites.weapons[weaponId] || sprites.weapons.pea;
     const bob = Math.sin(player.bob || 0) * 3;
     const kick = (gunKick || 0) * 12;
     bctx.drawImage(gun, bob * 0.4, bob + kick);
