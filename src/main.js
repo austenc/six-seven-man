@@ -738,14 +738,15 @@ function tick(now) {
 
     if (input.turnLeft) player.angle -= 2.2 * dt;
     if (input.turnRight) player.angle += 2.2 * dt;
-    // Right stick = aim / turn
-    if (Math.abs(input.lookX) > 0.08) {
-      player.angle += input.lookX * 2.9 * dt;
+    // Right stick = aim / turn (gentler than before)
+    if (Math.abs(input.lookX) > 0.15) {
+      const look = (Math.abs(input.lookX) - 0.15) / 0.85;
+      player.angle += Math.sign(input.lookX) * look * look * 1.55 * dt;
     }
 
     // Soft auto-aim while shooting; stronger on RUSH
     if (isTouchUI && (input.firing || input.rush)) {
-      applyAimAssist(dt, input.rush ? 5.2 : 3.2);
+      applyAimAssist(dt, input.rush ? 4.2 : 2.6);
     }
 
     const speeding = input.run || input.rush;

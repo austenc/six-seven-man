@@ -368,44 +368,43 @@ body {
   inset: 0;
   z-index: 18;
   pointer-events: none;
+  opacity: 0.7;
 }
 
+/* Compact stick hitboxes — don't cover FIRE / RUSH / USE */
 #joy-zone,
 #look-zone {
   position: absolute;
-  bottom: 96px;
-  width: 44%;
-  height: 44%;
+  bottom: 18px;
+  width: 140px;
+  height: 140px;
   pointer-events: auto;
   touch-action: none;
 }
 
 #joy-zone {
-  left: 0;
+  left: 12px;
 }
 
 #look-zone {
-  right: 0;
+  right: 12px;
 }
 
 #joy-base,
 #look-base {
   position: absolute;
-  bottom: 24px;
-  width: 118px;
-  height: 118px;
+  left: 50%;
+  top: 50%;
+  width: 112px;
+  height: 112px;
+  margin: -56px 0 0 -56px;
   border-radius: 50%;
-  border: 3px solid rgba(244, 239, 230, 0.45);
-  background: rgba(26, 16, 12, 0.35);
-}
-
-#joy-base {
-  left: 22px;
+  border: 3px solid rgba(244, 239, 230, 0.55);
+  background: rgba(26, 16, 12, 0.4);
 }
 
 #look-base {
-  right: 22px;
-  border-color: rgba(120, 180, 255, 0.5);
+  border-color: rgba(120, 180, 255, 0.55);
 }
 
 #joy-knob,
@@ -413,72 +412,90 @@ body {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 52px;
-  height: 52px;
-  margin: -26px 0 0 -26px;
+  width: 48px;
+  height: 48px;
+  margin: -24px 0 0 -24px;
   border-radius: 50%;
-  border: 3px solid #f4efe6;
-  box-shadow: 0 2px 0 #1a100c;
+  border: 3px solid rgba(244, 239, 230, 0.9);
+  box-shadow: 0 2px 0 rgba(26, 16, 12, 0.55);
   will-change: transform;
 }
 
 #joy-knob {
-  background: rgba(255, 107, 53, 0.9);
+  background: rgba(255, 107, 53, 0.85);
 }
 
 #look-knob {
-  background: rgba(90, 160, 255, 0.9);
+  background: rgba(90, 160, 255, 0.85);
+}
+
+/* RUSH sits between the sticks */
+#btn-rush {
+  position: absolute;
+  left: 50%;
+  bottom: 36px;
+  transform: translateX(-50%);
+  width: 86px;
+  height: 86px;
+  border-radius: 50%;
+  border: 4px solid rgba(244, 239, 230, 0.85);
+  background: rgba(255, 68, 85, 0.85);
+  font-family: "Press Start 2P", monospace;
+  font-size: 0.52rem;
+  color: #1a100c;
+  cursor: pointer;
+  box-shadow: 0 4px 0 rgba(26, 16, 12, 0.55);
+  pointer-events: auto;
+  touch-action: none;
+  z-index: 2;
+}
+
+#btn-rush:active {
+  transform: translateX(-50%) translateY(2px);
+  box-shadow: 0 2px 0 rgba(26, 16, 12, 0.55);
 }
 
 #mobile-actions {
   position: absolute;
-  right: 18px;
-  bottom: 240px;
+  right: 16px;
+  bottom: 170px;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 12px;
+  gap: 14px;
   pointer-events: auto;
   touch-action: none;
+  z-index: 2;
 }
 
 #btn-shoot,
-#btn-rush,
 #btn-use {
   border-radius: 50%;
-  border: 4px solid #f4efe6;
+  border: 4px solid rgba(244, 239, 230, 0.85);
   font-family: "Press Start 2P", monospace;
   color: #1a100c;
   cursor: pointer;
-  box-shadow: 0 4px 0 #1a100c;
+  box-shadow: 0 4px 0 rgba(26, 16, 12, 0.55);
 }
 
 #btn-shoot {
-  background: #ff6b35;
-  width: 92px;
-  height: 92px;
+  background: rgba(255, 107, 53, 0.85);
+  width: 96px;
+  height: 96px;
   font-size: 0.62rem;
 }
 
-#btn-rush {
-  background: #ff4455;
-  width: 78px;
-  height: 78px;
-  font-size: 0.5rem;
-}
-
 #btn-use {
-  background: #ffe08a;
-  width: 64px;
-  height: 64px;
+  background: rgba(255, 224, 138, 0.85);
+  width: 72px;
+  height: 72px;
   font-size: 0.5rem;
 }
 
 #btn-shoot:active,
-#btn-rush:active,
 #btn-use:active {
   transform: translateY(2px);
-  box-shadow: 0 2px 0 #1a100c;
+  box-shadow: 0 2px 0 rgba(26, 16, 12, 0.55);
 }
 
 @media (hover: hover) and (pointer: fine) {
