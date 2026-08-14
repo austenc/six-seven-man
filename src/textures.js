@@ -27,9 +27,10 @@ export function createTextures() {
 }
 
 function wallBrick() {
+  // Doom STAR-ish brown tech brick
   const c = makeCanvas();
   const g = c.getContext("2d");
-  g.fillStyle = "#5a4030";
+  g.fillStyle = "#4a3428";
   g.fillRect(0, 0, 64, 64);
   for (let row = 0; row < 8; row++) {
     const off = row % 2 === 0 ? 0 : 8;
@@ -37,32 +38,47 @@ function wallBrick() {
       const x = col * 16 + off;
       const y = row * 8;
       const n = noise(col + 3, row, 1);
-      g.fillStyle = `rgb(${110 + n * 40},${70 + n * 20},${45})`;
+      const r = 98 + n * 36;
+      const gg = 62 + n * 18;
+      const b = 38 + n * 10;
+      g.fillStyle = `rgb(${r},${gg},${b})`;
       g.fillRect(x + 1, y + 1, 14, 6);
-      g.strokeStyle = "#2a1810";
+      g.strokeStyle = "#1e140e";
       g.strokeRect(x, y, 16, 8);
     }
   }
+  // Tech vent plate
+  g.fillStyle = "#2a2218";
+  g.fillRect(22, 22, 20, 20);
+  g.fillStyle = "#6a5038";
+  g.fillRect(26, 26, 12, 12);
+  g.fillStyle = "#1a1008";
+  g.fillRect(28, 28, 8, 8);
   return c;
 }
 
 function wallStone() {
+  // Grey metal panel — Doom computer-room vibe
   const c = makeCanvas();
   const g = c.getContext("2d");
   for (let y = 0; y < 64; y++) {
     for (let x = 0; x < 64; x++) {
       const n = noise(x, y, 2);
-      const v = 95 + n * 45;
-      g.fillStyle = `rgb(${v},${v * 0.85},${v * 0.7})`;
+      const v = 78 + n * 40;
+      g.fillStyle = `rgb(${v},${v * 0.92},${v * 0.82})`;
       g.fillRect(x, y, 1, 1);
     }
   }
-  g.strokeStyle = "#3a3028";
+  g.strokeStyle = "#2a2a2a";
   g.lineWidth = 2;
-  g.strokeRect(1, 1, 30, 30);
-  g.strokeRect(32, 1, 30, 30);
-  g.strokeRect(1, 32, 30, 30);
-  g.strokeRect(32, 32, 30, 30);
+  g.strokeRect(2, 2, 28, 28);
+  g.strokeRect(34, 2, 28, 28);
+  g.strokeRect(2, 34, 28, 28);
+  g.strokeRect(34, 34, 28, 28);
+  g.fillStyle = "#3a8a3a";
+  g.fillRect(8, 10, 6, 4);
+  g.fillStyle = "#8a2a2a";
+  g.fillRect(40, 42, 6, 4);
   return c;
 }
 
@@ -72,52 +88,58 @@ function wallStone2() {
   for (let y = 0; y < 64; y++) {
     for (let x = 0; x < 64; x++) {
       const n = noise(x, y, 7);
-      const v = 70 + n * 35;
-      g.fillStyle = `rgb(${v * 0.9},${v * 0.75},${v * 0.55})`;
+      const v = 58 + n * 32;
+      g.fillStyle = `rgb(${v * 0.95},${v * 0.72},${v * 0.5})`;
       g.fillRect(x, y, 1, 1);
     }
   }
-  g.fillStyle = "#4a3828";
-  g.fillRect(0, 20, 64, 4);
-  g.fillRect(0, 44, 64, 4);
+  g.fillStyle = "#2a2010";
+  g.fillRect(0, 18, 64, 5);
+  g.fillRect(0, 42, 64, 5);
+  g.fillStyle = "#8a6a30";
+  g.fillRect(0, 19, 64, 2);
   return c;
 }
 
 function wallSupport() {
   const c = makeCanvas();
   const g = c.getContext("2d");
-  g.fillStyle = "#3a2a1a";
+  g.fillStyle = "#2a2218";
   g.fillRect(0, 0, 64, 64);
-  g.fillStyle = "#6a5030";
-  g.fillRect(8, 0, 16, 64);
-  g.fillRect(40, 0, 16, 64);
-  g.fillStyle = "#8a6a40";
+  g.fillStyle = "#5a4830";
+  g.fillRect(6, 0, 18, 64);
+  g.fillRect(40, 0, 18, 64);
+  g.fillStyle = "#8a7048";
   g.fillRect(10, 0, 4, 64);
-  g.fillRect(42, 0, 4, 64);
+  g.fillRect(44, 0, 4, 64);
+  g.fillStyle = "#1a1810";
+  for (let y = 4; y < 64; y += 10) {
+    g.fillRect(0, y, 64, 2);
+  }
   return c;
 }
 
 function wallDoor() {
-  // Classic Doom-style blue tech door — unmistakable
+  // Classic blue Doom door with warning stripe
   const c = makeCanvas();
   const g = c.getContext("2d");
-  g.fillStyle = "#1a2038";
+  g.fillStyle = "#141c30";
   g.fillRect(0, 0, 64, 64);
-  // Vertical ribs
   for (let i = 0; i < 4; i++) {
-    g.fillStyle = i % 2 === 0 ? "#3a5080" : "#2a3870";
+    g.fillStyle = i % 2 === 0 ? "#3a5088" : "#243868";
     g.fillRect(6 + i * 14, 4, 12, 56);
   }
-  // Yellow warning stripe
   g.fillStyle = "#c9a227";
-  g.fillRect(0, 26, 64, 12);
+  g.fillRect(0, 24, 64, 14);
+  g.fillStyle = "#1a1008";
+  g.fillRect(0, 28, 64, 2);
+  g.fillRect(0, 34, 64, 2);
   g.fillStyle = "#1a1008";
   g.font = "bold 9px monospace";
-  g.fillText("DOOR", 18, 35);
-  // Handles
+  g.fillText("DOOR", 18, 34);
   g.fillStyle = "#e8d080";
-  g.fillRect(28, 14, 8, 6);
-  g.fillRect(28, 44, 8, 6);
+  g.fillRect(28, 12, 8, 6);
+  g.fillRect(28, 46, 8, 6);
   g.strokeStyle = "#88aaff";
   g.lineWidth = 3;
   g.strokeRect(2, 2, 60, 60);
@@ -145,11 +167,14 @@ function floorStone() {
   for (let y = 0; y < 64; y++) {
     for (let x = 0; x < 64; x++) {
       const n = noise(x, y, 5);
-      const v = 50 + n * 30;
-      g.fillStyle = `rgb(${v},${v * 0.75},${v * 0.5})`;
+      const v = 42 + n * 28;
+      g.fillStyle = `rgb(${v},${v * 0.72},${v * 0.48})`;
       g.fillRect(x, y, 1, 1);
     }
   }
+  g.strokeStyle = "#2a1810";
+  g.strokeRect(0, 0, 32, 32);
+  g.strokeRect(32, 32, 32, 32);
   return c;
 }
 
@@ -159,10 +184,13 @@ function floorNukage() {
   for (let y = 0; y < 64; y++) {
     for (let x = 0; x < 64; x++) {
       const n = noise(x, y, 9);
-      g.fillStyle = `rgb(${20 + n * 30},${120 + n * 80},${30 + n * 20})`;
+      g.fillStyle = `rgb(${10 + n * 25},${140 + n * 90},${20 + n * 30})`;
       g.fillRect(x, y, 1, 1);
     }
   }
+  g.fillStyle = "rgba(180,255,80,0.35)";
+  g.fillRect(8, 20, 18, 6);
+  g.fillRect(36, 40, 14, 5);
   return c;
 }
 
@@ -193,6 +221,7 @@ export function createSprites() {
     peaBall: spritePeaBall(),
     cornKernel: spriteCornKernel(),
     cobRocket: spriteCobRocket(),
+    fireball: spriteFireball(),
     weapons: {
       pea: weaponPea(false),
       peaFlash: weaponPea(true),
@@ -205,75 +234,184 @@ export function createSprites() {
 }
 
 function spriteCake() {
+  // Demonic layered cake — horns, fangs, red eyes (Pinky energy)
   const c = makeCanvas(64);
   const g = c.getContext("2d");
-  g.fillStyle = "#c4891a";
-  g.fillRect(12, 28, 40, 28);
+  // Horns
+  g.fillStyle = "#8b1a1a";
+  g.beginPath();
+  g.moveTo(14, 18);
+  g.lineTo(8, 2);
+  g.lineTo(22, 14);
+  g.fill();
+  g.beginPath();
+  g.moveTo(50, 18);
+  g.lineTo(56, 2);
+  g.lineTo(42, 14);
+  g.fill();
+  // Cake layers
+  g.fillStyle = "#6b3410";
+  g.fillRect(10, 40, 44, 18);
   g.fillStyle = "#f5e6c8";
-  g.fillRect(10, 24, 44, 8);
-  g.fillStyle = "#c4891a";
-  g.fillRect(14, 16, 36, 10);
-  g.fillStyle = "#f5e6c8";
-  g.fillRect(12, 12, 40, 6);
-  g.fillStyle = "#ff2222";
-  g.fillRect(20, 30, 6, 6);
-  g.fillRect(38, 30, 6, 6);
-  g.fillStyle = "#111";
-  g.fillRect(22, 32, 3, 3);
-  g.fillRect(40, 32, 3, 3);
-  g.fillStyle = "#5c1a1a";
-  g.fillRect(24, 42, 16, 4);
+  g.fillRect(8, 36, 48, 8);
+  g.fillStyle = "#a05018";
+  g.fillRect(12, 26, 40, 12);
+  g.fillStyle = "#fff0d0";
+  g.fillRect(10, 22, 44, 6);
+  g.fillStyle = "#c46820";
+  g.fillRect(14, 14, 36, 10);
+  // Face
+  g.fillStyle = "#ff2200";
+  g.fillRect(20, 28, 8, 8);
+  g.fillRect(36, 28, 8, 8);
+  g.fillStyle = "#1a0505";
+  g.fillRect(22, 30, 4, 4);
+  g.fillRect(38, 30, 4, 4);
+  // Fanged mouth
+  g.fillStyle = "#2a0808";
+  g.fillRect(22, 44, 20, 8);
+  g.fillStyle = "#f5f5f0";
+  g.fillRect(24, 44, 4, 7);
+  g.fillRect(36, 44, 4, 7);
+  g.fillStyle = "#ff3344";
+  g.fillRect(28, 48, 8, 3);
   return c;
 }
 
 function spriteIce() {
+  // Imp-like ice cream cone demon
   const c = makeCanvas(64);
   const g = c.getContext("2d");
-  g.fillStyle = "#e0a86c";
+  // Horns
+  g.fillStyle = "#5a1010";
   g.beginPath();
-  g.moveTo(32, 56);
-  g.lineTo(18, 28);
-  g.lineTo(46, 28);
+  g.moveTo(18, 16);
+  g.lineTo(10, 0);
+  g.lineTo(26, 12);
   g.fill();
-  g.fillStyle = "#ffb6c1";
   g.beginPath();
-  g.arc(32, 22, 14, 0, Math.PI * 2);
+  g.moveTo(46, 16);
+  g.lineTo(54, 0);
+  g.lineTo(38, 12);
   g.fill();
-  g.fillStyle = "#add8e6";
+  // Cone body
+  g.fillStyle = "#c4894a";
   g.beginPath();
-  g.arc(32, 12, 10, 0, Math.PI * 2);
+  g.moveTo(32, 60);
+  g.lineTo(14, 30);
+  g.lineTo(50, 30);
   g.fill();
-  g.fillStyle = "#e74c3c";
+  g.strokeStyle = "#8a6020";
   g.beginPath();
-  g.arc(32, 4, 4, 0, Math.PI * 2);
+  g.moveTo(22, 48);
+  g.lineTo(42, 36);
+  g.moveTo(28, 52);
+  g.lineTo(44, 42);
+  g.stroke();
+  // Scoops
+  g.fillStyle = "#ff8fab";
+  g.beginPath();
+  g.arc(32, 24, 16, 0, Math.PI * 2);
   g.fill();
-  g.fillStyle = "#ff2222";
-  g.fillRect(24, 20, 5, 5);
-  g.fillRect(35, 20, 5, 5);
+  g.fillStyle = "#b8e0ff";
+  g.beginPath();
+  g.arc(32, 12, 12, 0, Math.PI * 2);
+  g.fill();
+  // Eyes + claws vibe
+  g.fillStyle = "#ffee44";
+  g.fillRect(24, 20, 6, 6);
+  g.fillRect(36, 20, 6, 6);
+  g.fillStyle = "#111";
+  g.fillRect(26, 22, 3, 3);
+  g.fillRect(38, 22, 3, 3);
+  g.fillStyle = "#2a1010";
+  g.fillRect(26, 28, 12, 4);
+  g.fillStyle = "#fff";
+  g.fillRect(27, 28, 3, 5);
+  g.fillRect(34, 28, 3, 5);
   return c;
 }
 
 function spriteCookie() {
+  // Cacodemon-style floating cookie: round, one big eye, fanged maw
   const c = makeCanvas(64);
   const g = c.getContext("2d");
-  g.fillStyle = "#1a5276";
+  // Body
+  g.fillStyle = "#6b3f14";
+  g.beginPath();
+  g.arc(32, 34, 26, 0, Math.PI * 2);
+  g.fill();
+  g.fillStyle = "#a0672a";
   g.beginPath();
   g.arc(32, 34, 22, 0, Math.PI * 2);
   g.fill();
+  // Chocolate chips
+  g.fillStyle = "#2a1508";
+  for (const [cx, cy] of [
+    [18, 22],
+    [46, 20],
+    [14, 40],
+    [48, 42],
+    [22, 48],
+    [40, 16],
+  ]) {
+    g.beginPath();
+    g.arc(cx, cy, 3, 0, Math.PI * 2);
+    g.fill();
+  }
+  // Single huge eye (cacodemon)
+  g.fillStyle = "#f5f0e0";
+  g.beginPath();
+  g.arc(32, 26, 11, 0, Math.PI * 2);
+  g.fill();
+  g.fillStyle = "#e03020";
+  g.beginPath();
+  g.arc(32, 26, 7, 0, Math.PI * 2);
+  g.fill();
+  g.fillStyle = "#100808";
+  g.beginPath();
+  g.arc(32, 26, 3.5, 0, Math.PI * 2);
+  g.fill();
   g.fillStyle = "#fff";
   g.beginPath();
-  g.arc(24, 26, 7, 0, Math.PI * 2);
-  g.arc(40, 26, 7, 0, Math.PI * 2);
+  g.arc(29, 23, 2, 0, Math.PI * 2);
   g.fill();
-  g.fillStyle = "#111";
+  // Huge fanged mouth
+  g.fillStyle = "#1a0808";
   g.beginPath();
-  g.arc(24, 26, 3, 0, Math.PI * 2);
-  g.arc(40, 26, 3, 0, Math.PI * 2);
+  g.ellipse(32, 46, 14, 9, 0, 0, Math.PI * 2);
   g.fill();
-  g.fillStyle = "#c4a35a";
-  g.fillRect(40, 40, 12, 6);
-  g.fillStyle = "#111";
-  g.fillRect(22, 40, 20, 8);
+  g.fillStyle = "#f0e8d8";
+  for (let i = 0; i < 5; i++) {
+    const tx = 22 + i * 5;
+    g.beginPath();
+    g.moveTo(tx, 40);
+    g.lineTo(tx + 2.5, 48);
+    g.lineTo(tx + 5, 40);
+    g.fill();
+  }
+  g.fillStyle = "#ff3344";
+  g.beginPath();
+  g.ellipse(32, 48, 6, 3, 0, 0, Math.PI);
+  g.fill();
+  return c;
+}
+
+function spriteFireball() {
+  const c = makeCanvas(24);
+  const g = c.getContext("2d");
+  g.fillStyle = "#ff2200";
+  g.beginPath();
+  g.arc(12, 12, 10, 0, Math.PI * 2);
+  g.fill();
+  g.fillStyle = "#ff8800";
+  g.beginPath();
+  g.arc(12, 12, 7, 0, Math.PI * 2);
+  g.fill();
+  g.fillStyle = "#ffff88";
+  g.beginPath();
+  g.arc(12, 12, 3.5, 0, Math.PI * 2);
+  g.fill();
   return c;
 }
 

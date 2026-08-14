@@ -55,9 +55,39 @@ const renderer = createRenderer(canvas, textures, sprites);
 renderer.resize();
 
 const ENEMY_TYPES = [
-  { sprite: "cake", label: "Cake Demon", hp: 50, speed: 1.8, damage: 10 },
-  { sprite: "ice", label: "Ice Cream Imp", hp: 30, speed: 2.6, damage: 8 },
-  { sprite: "cookie", label: "Cookie Fiend", hp: 80, speed: 1.4, damage: 14 },
+  {
+    sprite: "cake",
+    label: "Cake Demon",
+    hp: 55,
+    speed: 1.7,
+    damage: 12,
+    floats: false,
+    shoots: false,
+  },
+  {
+    sprite: "ice",
+    label: "Ice Cream Imp",
+    hp: 28,
+    speed: 2.5,
+    damage: 8,
+    floats: false,
+    shoots: false,
+  },
+  {
+    sprite: "cookie",
+    label: "Cookie Demon",
+    hp: 90,
+    speed: 0.55,
+    damage: 10,
+    floats: true,
+    shoots: true,
+    shootRange: 11,
+    shootCd: 2.4,
+    fireballSpeed: 3.2,
+    fireballDamage: 14,
+    vMove: -0.22,
+    spriteScale: 1.15,
+  },
 ];
 
 const state = {
@@ -157,7 +187,16 @@ function loadLevel(index) {
       speed: type.speed,
       damage: type.damage,
       alive: true,
-      attackCd: 0,
+      attackCd: 0.5 + Math.random(),
+      floats: !!type.floats,
+      shoots: !!type.shoots,
+      shootRange: type.shootRange || 0,
+      shootCdMax: type.shootCd || 2,
+      fireballSpeed: type.fireballSpeed || 3,
+      fireballDamage: type.fireballDamage || 10,
+      vMove: type.vMove || 0,
+      spriteScale: type.spriteScale || 1,
+      floatBob: Math.random() * Math.PI * 2,
     };
   });
 
@@ -310,13 +349,19 @@ function fire() {
   setTimeout(() => muzzleFlash.classList.remove("show"), 55);
 
   const count = w.count || 1;
+  const rightX = -Math.sin(player.angle);
+  const rightY = Math.cos(player.angle);
+  const muzzleDist = 0.55;
+  const muzzleSide = 0.12;
   for (let i = 0; i < count; i++) {
     const ang =
       player.angle +
-      (count === 1 ? (Math.random() - 0.5) * w.spread : (i / (count - 1) - 0.5) * w.spread * 2);
+      (count === 1
+        ? (Math.random() - 0.5) * w.spread
+        : (i / (count - 1) - 0.5) * w.spread * 2);
     projectiles.push({
-      x: player.x + Math.cos(player.angle) * 0.35,
-      y: player.y + Math.sin(player.angle) * 0.35,
+      x: player.x + Math.cos(player.angle) * muzzleDist + rightX * muzzleSide,
+      y: player.y + Math.sin(player.angle) * muzzleDist + rightY * muzzleSide,
       vx: Math.cos(ang) * w.speed,
       vy: Math.sin(ang) * w.speed,
       damage: w.damage,
@@ -324,6 +369,10 @@ function fire() {
       life: 1.6,
       sprite: w.projectileSprite,
       owner: "player",
+      isProjectile: true,
+      spriteScale: 0.35,
+      vMove: 0.38,
+      vMoveTarget: 0.04,
     });
   }
 }
@@ -359,14 +408,42 @@ function updateEnemies(dt) {
     const dy = player.y - e.y;
     const dist = Math.hypot(dx, dy);
     e.attackCd = Math.max(0, e.attackCd - dt);
-    if (dist < 12 && dist > 0.01) {
-      const nx = e.x + (dx / dist) * e.speed * dt;
-      const ny = e.y + (dy / dist) * e.speed * dt;
-      if (!isBlocked(map, nx, e.y, doors)) e.x = nx;
-      if (!isBlocked(map, e.x, ny, doors)) e.y = ny;
-      if (dist < 0.7 && e.attackCd <= 0) {
+    if (e.floats) e.floatBob += dt * 2.2;
+
+    if (dist < 14 && dist > 0.01) {
+      // Floaters drift slowly; melee demons charge
+      const engage = e.shoots ? dist > 3.5 : true;
+      if (engage) {
+        const nx = e.x + (dx / dist) * e.speed * dt;
+        const ny = e.y + (dy / dist) * e.speed * dt;
+        if (!isBlocked(map, nx, e.y, doors)) e.x = nx;
+        if (!isBlocked(map, e.x, ny, doors)) e.y = ny;
+      }
+
+      if (e.shoots && dist < e.shootRange && dist > 1.2 && e.attackCd <= 0) {
+        const inv = 1 / dist;
+        projectiles.push({
+          x: e.x + dx * inv * 0.4,
+          y: e.y + dy * inv * 0.4,
+          vx: dx * inv * e.fireballSpeed,
+          vy: dy * inv * e.fireballSpeed,
+          damage: e.fireballDamage,
+          splash: 0,
+          life: 3.5,
+          sprite: "fireball",
+          owner: "enemy",
+          isProjectile: true,
+          spriteScale: 0.45,
+          vMove: e.vMove || -0.1,
+        });
+        e.attackCd = e.shootCdMax;
+        sfxShoot("pea");
+      } else if (!e.shoots && dist < 0.7 && e.attackCd <= 0) {
         onHurt(e.damage, e.label);
         e.attackCd = 0.85;
+      } else if (e.shoots && dist < 0.85 && e.attackCd <= 0) {
+        onHurt(e.damage, e.label);
+        e.attackCd = 1.1;
       }
     }
   }
@@ -412,6 +489,9 @@ function entitiesForDraw() {
       y: p.y,
       sprite: p.sprite || "peaBall",
       alive: true,
+      isProjectile: true,
+      spriteScale: p.spriteScale || 0.35,
+      vMove: p.vMove || 0,
     })),
   ];
 }
@@ -684,12 +764,29 @@ function tick(now) {
       state.nukeT = 0.15;
     }
 
-    // Projectiles — visible peas / kernels / cobs
+    // Projectiles — visible peas / kernels / cobs / demon fireballs
     for (let i = projectiles.length - 1; i >= 0; i--) {
       const p = projectiles[i];
       p.life -= dt;
       p.x += p.vx * dt;
       p.y += p.vy * dt;
+      if (p.vMoveTarget != null) {
+        p.vMove += (p.vMoveTarget - p.vMove) * Math.min(1, dt * 5);
+      }
+
+      const wall = isBlocked(map, p.x, p.y, doors);
+      if (p.owner === "enemy") {
+        if (p.life <= 0 || wall) {
+          projectiles.splice(i, 1);
+          continue;
+        }
+        if (Math.hypot(player.x - p.x, player.y - p.y) < 0.4) {
+          onHurt(p.damage, "Fireball");
+          projectiles.splice(i, 1);
+        }
+        continue;
+      }
+
       let hitEnemy = null;
       for (const e of enemies) {
         if (e.alive && Math.hypot(e.x - p.x, e.y - p.y) < 0.45) {
@@ -697,7 +794,6 @@ function tick(now) {
           break;
         }
       }
-      const wall = isBlocked(map, p.x, p.y, doors);
       if (p.life <= 0 || wall || hitEnemy) {
         if (p.splash > 0) {
           explode(p.x, p.y, p.damage, p.splash);

@@ -57,17 +57,16 @@ export function createRenderer(canvas, textures, sprites) {
   }
 
   function render(player, map, doors, entities, weaponId, gunKick, muzzleOn) {
-    // Ceiling / floor flat (fast Doom look)
+    // Ceiling / floor flat fallback tint (Doom brown / grey)
     for (let y = 0; y < H; y++) {
       const isCeil = y < H / 2;
       const shadeY = isCeil
-        ? 0.25 + (y / (H / 2)) * 0.15
-        : 0.2 + ((H - y) / (H / 2)) * 0.25;
-      // Slight green tint near bottom if standing in nukage (passed via player.nukage)
+        ? 0.22 + (y / (H / 2)) * 0.18
+        : 0.18 + ((H - y) / (H / 2)) * 0.28;
       const nuke = player.nukage ? 1 : 0;
-      const r = isCeil ? (30 * shadeY) | 0 : ((55 + nuke * 10) * shadeY) | 0;
-      const g = isCeil ? (18 * shadeY) | 0 : ((38 + nuke * 40) * shadeY) | 0;
-      const b = isCeil ? (14 * shadeY) | 0 : ((22 - nuke * 8) * shadeY) | 0;
+      const r = isCeil ? (40 * shadeY) | 0 : ((62 + nuke * 8) * shadeY) | 0;
+      const g = isCeil ? (36 * shadeY) | 0 : ((42 + nuke * 50) * shadeY) | 0;
+      const b = isCeil ? (32 * shadeY) | 0 : ((28 - nuke * 6) * shadeY) | 0;
       for (let x = 0; x < W; x++) setPixel(x, y, r, g, b);
     }
 
@@ -185,7 +184,7 @@ export function createRenderer(canvas, textures, sprites) {
 
     bctx.putImageData(img, 0, 0);
 
-    // Sprites (enemies + pickups)
+    // Sprites (enemies + pickups + projectiles)
     const spritesToDraw = entities
       .filter((e) => e.alive !== false && !e.taken)
       .map((e) => {
@@ -194,7 +193,7 @@ export function createRenderer(canvas, textures, sprites) {
         const dist = Math.hypot(dx, dy);
         return { e, dx, dy, dist };
       })
-      .filter((s) => s.dist > 0.2)
+      .filter((s) => s.dist > (s.e.isProjectile ? 0.05 : 0.25))
       .sort((a, b) => b.dist - a.dist);
 
     for (const s of spritesToDraw) {
@@ -204,12 +203,20 @@ export function createRenderer(canvas, textures, sprites) {
       if (transformY <= 0.05) continue;
 
       const spriteScreenX = Math.floor((W / 2) * (1 + transformX / transformY));
-      const spriteH = Math.abs(Math.floor(H / transformY));
+      const scaleMul = s.e.spriteScale || 1;
+      const spriteH = Math.abs(Math.floor((H / transformY) * scaleMul));
       const spriteW = spriteH;
-      const drawStartY = Math.max(0, ((H - spriteH) / 2) | 0);
-      const drawEndY = Math.min(H - 1, ((H + spriteH) / 2) | 0);
+      // vMove: + lowers (gun muzzle), - raises (floaters). Wall-height fractions.
+      const bob = s.e.floatBob != null ? Math.sin(s.e.floatBob) * 0.06 : 0;
+      const vMove = (s.e.vMove || 0) + bob;
+      const vMoveScreen = Math.floor((vMove * H) / transformY);
+      const drawStartY = (((H - spriteH) / 2) | 0) + vMoveScreen;
+      const drawEndY = drawStartY + spriteH;
       const drawStartX = Math.max(0, ((spriteScreenX - spriteW / 2) | 0));
       const drawEndX = Math.min(W - 1, ((spriteScreenX + spriteW / 2) | 0));
+      if (drawEndY < 0 || drawStartY >= H) continue;
+      const clipStartY = Math.max(0, drawStartY);
+      const clipEndY = Math.min(H - 1, drawEndY);
 
       const spr = sprites[s.e.sprite] || sprites.cake;
       const shadeF = Math.max(0.2, Math.min(1, 1 - s.dist / 16));
@@ -218,23 +225,12 @@ export function createRenderer(canvas, textures, sprites) {
         if (transformY >= zBuf[stripe]) continue;
         const texX = Math.floor(((stripe - (spriteScreenX - spriteW / 2)) * spr.width) / spriteW);
         bctx.globalAlpha = 1;
-        // draw column via drawImage slice
         bctx.save();
         bctx.beginPath();
-        bctx.rect(stripe, drawStartY, 1, drawEndY - drawStartY + 1);
+        bctx.rect(stripe, clipStartY, 1, clipEndY - clipStartY + 1);
         bctx.clip();
         bctx.filter = `brightness(${shadeF})`;
-        bctx.drawImage(
-          spr,
-          texX,
-          0,
-          1,
-          spr.height,
-          stripe,
-          drawStartY,
-          1,
-          drawEndY - drawStartY + 1
-        );
+        bctx.drawImage(spr, texX, 0, 1, spr.height, stripe, drawStartY, 1, spriteH);
         bctx.restore();
       }
     }
