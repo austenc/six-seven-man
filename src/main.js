@@ -1,13 +1,14 @@
 import * as THREE from "three";
 import {
   createPlayer,
+  createJalapenoBolt,
   WEAPON_DEFS,
   HOTBAR_SLOT_IDS,
   updatePlayerAnim,
   attachWeaponMeshes,
 } from "./player.js";
 import { generateCity } from "./world.js";
-import { spawnEnemies, updateEnemies, clearEnemies } from "./enemies.js";
+import { spawnEnemies, updateEnemies, clearEnemies, getHitCapsule } from "./enemies.js";
 import {
   unlockAudio,
   sfxFootstep,
@@ -44,11 +45,19 @@ const restartBtn = document.getElementById("restart");
 
 canvas.tabIndex = 0;
 
+function requestGameLock() {
+  suppressBlurClearUntil = performance.now() + 500;
+  canvas.focus();
+  canvas.requestPointerLock?.();
+}
+
+let suppressBlurClearUntil = 0;
+
 const MAX_HP = 100;
 const PLAYER_RADIUS = 0.7;
 const MOVE_SPEED = 13;
 const SPRINT_MULT = 1.55;
-const JUMP_VEL = 11.5;
+const JUMP_VEL = 14;
 const GRAVITY = 32;
 
 const inventory = {
@@ -63,8 +72,10 @@ const state = {
   attackT: 0,
   attackDuration: 0.26,
   hitApplied: false,
+  swingHits: new Set(),
+  didShoot: false,
   messageT: 0,
-  invuln: 0,
+  invuln: 2.4,
   alive: true,
   started: false,
   score: 0,
@@ -107,14 +118,15 @@ player.position.set(0, 0, 0);
 scene.add(player);
 
 const enemies = spawnEnemies(scene, openSpots, 22, 67);
+const projectiles = [];
 
 const aimRay = new THREE.Raycaster();
 const aimNdc = new THREE.Vector2(0, 0);
 const aimPoint = new THREE.Vector3();
 const aimDir = new THREE.Vector3();
 const weaponOrigin = new THREE.Vector3();
-const aimHitCenter = new THREE.Vector3();
 const aimToCenter = new THREE.Vector3();
+const lookFlat = new THREE.Vector3();
 const softPush = new THREE.Vector3();
 let aimPitch = 0;
 
@@ -190,6 +202,7 @@ function restartRun() {
   inventoryEl.classList.add("hidden");
 
   clearEnemies(scene, enemies);
+  clearProjectiles();
   const fresh = spawnEnemies(scene, openSpots, 22, 67 + Math.floor(Math.random() * 1000));
   enemies.push(...fresh);
 
@@ -213,7 +226,9 @@ function restartRun() {
   state.attacking = false;
   state.attackT = 0;
   state.hitApplied = false;
-  state.invuln = 1.2;
+  state.swingHits = new Set();
+  state.didShoot = false;
+  state.invuln = 2.8;
   state.combo = 0;
   state.comboT = 0;
   state.score = 0;
@@ -229,7 +244,7 @@ function restartRun() {
   crosshairEl.classList.remove("hidden");
   hudEl.classList.remove("hidden");
   canvas.focus();
-  requestAnimationFrame(() => canvas.requestPointerLock?.());
+  requestAnimationFrame(() => requestGameLock());
   showMessage("Back at it — desserts still hate you.");
 }
 
@@ -269,7 +284,7 @@ function refreshHud() {
       btn.addEventListener("click", () => {
         equipSlot(i);
         setInventoryOpen(false);
-        canvas.requestPointerLock?.();
+        requestGameLock();
       });
     }
     inventorySlotsEl.appendChild(btn);
@@ -319,14 +334,14 @@ function setInventoryOpen(open) {
     refreshHud();
   } else if (state.started) {
     canvas.focus();
-    canvas.requestPointerLock?.();
+    requestGameLock();
   }
 }
 
 function tryOpenCrate() {
   if (inventory.open) return;
   let nearest = null;
-  let nearestDist = 3.2;
+  let nearestDist = 4.6;
   for (const c of crates) {
     if (c.opened) continue;
     const d = player.position.distanceTo(c.position);
@@ -346,8 +361,10 @@ function tryOpenCrate() {
   bumpScore(15);
 
   const roll = Math.random();
-  if (roll < 0.5) grantWeapon("carrotSword");
-  else if (roll < 0.95) grantWeapon("asparagusSpear");
+  if (roll < 0.24) grantWeapon("carrotSword");
+  else if (roll < 0.46) grantWeapon("asparagusSpear");
+  else if (roll < 0.68) grantWeapon("broccoliMace");
+  else if (roll < 0.9) grantWeapon("jalapenoPopper");
   else {
     setHealth(state.hp + 25);
     sfxPickup();
@@ -361,24 +378,38 @@ function getLookDirection(out) {
   return out;
 }
 
-/** Crosshair → world aim. Body + weapons + hit tests all use this. */
+/** Crosshair → world aim. Prefers an enemy under the reticle, then a mid-body plane. */
 function updateAim() {
   aimRay.setFromCamera(aimNdc, camera);
   const ray = aimRay.ray;
-
-  // Prefer where the crosshair meets chest-height plane; else a look-distance point
-  const planeY = player.position.y + 2.4;
-  let tPlane = Infinity;
-  if (Math.abs(ray.direction.y) > 0.001) {
-    tPlane = (planeY - ray.origin.y) / ray.direction.y;
-  }
-  if (tPlane > 2 && tPlane < 80) {
-    aimPoint.copy(ray.origin).addScaledVector(ray.direction, tPlane);
-  } else {
-    aimPoint.copy(ray.origin).addScaledVector(ray.direction, 22);
-  }
-
   weaponOrigin.set(player.position.x, player.position.y + 3.15, player.position.z);
+
+  let bestT = 90;
+  let found = false;
+  for (const e of enemies) {
+    if (!e.userData.alive) continue;
+    const t = rayHitsCapsule(ray.origin, ray.direction, 90, getHitCapsule(e), 0.15);
+    if (t != null && t < bestT) {
+      bestT = t;
+      found = true;
+    }
+  }
+
+  if (found) {
+    aimPoint.copy(ray.origin).addScaledVector(ray.direction, bestT);
+  } else {
+    const planeY = player.position.y + 1.35;
+    let tPlane = Infinity;
+    if (Math.abs(ray.direction.y) > 0.001) {
+      tPlane = (planeY - ray.origin.y) / ray.direction.y;
+    }
+    if (tPlane > 0.8 && tPlane < 90) {
+      aimPoint.copy(ray.origin).addScaledVector(ray.direction, tPlane);
+    } else {
+      aimPoint.copy(ray.origin).addScaledVector(ray.direction, 16);
+    }
+  }
+
   aimDir.subVectors(aimPoint, weaponOrigin);
   const len = aimDir.length();
   if (len < 0.5) {
@@ -393,6 +424,42 @@ function updateAim() {
   aimPitch = Math.atan2(aimDir.y, Math.max(0.05, horiz));
 }
 
+function rayHitsCapsule(origin, dir, maxT, cap, extraR = 0) {
+  const r = cap.radius + extraR;
+  const ox = origin.x - cap.x;
+  const oz = origin.z - cap.z;
+  const a = dir.x * dir.x + dir.z * dir.z;
+  let tEnter;
+  let tExit;
+
+  if (a < 1e-8) {
+    if (ox * ox + oz * oz > r * r) return null;
+    tEnter = 0;
+    tExit = maxT;
+  } else {
+    const b = 2 * (ox * dir.x + oz * dir.z);
+    const c = ox * ox + oz * oz - r * r;
+    const disc = b * b - 4 * a * c;
+    if (disc < 0) return null;
+    const s = Math.sqrt(disc);
+    tEnter = (-b - s) / (2 * a);
+    tExit = (-b + s) / (2 * a);
+  }
+  if (tExit < 0.08 || tEnter > maxT) return null;
+
+  const t0 = Math.max(0.08, tEnter);
+  const t1 = Math.min(maxT, tExit);
+  if (t1 < t0) return null;
+
+  const y0 = origin.y + dir.y * t0;
+  const y1 = origin.y + dir.y * t1;
+  const yMin = Math.min(y0, y1);
+  const yMax = Math.max(y0, y1);
+  const slop = r * 0.45;
+  if (yMax < cap.minY - slop || yMin > cap.maxY + slop) return null;
+  return t0;
+}
+
 function attack() {
   if (!state.alive || !state.started || state.attacking || inventory.open) return;
   const def = getEquippedDef();
@@ -400,59 +467,37 @@ function attack() {
   state.attackDuration = def.attackDuration;
   state.attackT = def.attackDuration;
   state.hitApplied = false;
+  state.swingHits = new Set();
+  state.didShoot = false;
   sfxSwing(def.style);
 }
 
-function applyAttackHits() {
-  const def = getEquippedDef();
-  updateAim();
+function burstColor(style) {
+  if (style === "sword") return 0xf39c12;
+  if (style === "spear") return 0x6ab04c;
+  if (style === "mace") return 0x27ae60;
+  if (style === "gun") return 0xc0392b;
+  return 0xffe08a;
+}
 
-  // Hit test along the weapon aim (body → crosshair), not a free camera-only ray
-  const beam =
-    def.style === "spear" ? 0.26 : def.style === "sword" ? 0.52 : 0.4;
-
-  let best = null;
-  let bestT = def.range;
-
-  for (const e of enemies) {
-    if (!e.userData.alive) continue;
-
-    const enemyR = e.userData.hitRadius ?? 0.7;
-    const hitR = enemyR * (def.style === "spear" ? 0.8 : 1.0) + beam;
-    aimHitCenter.set(
-      e.position.x,
-      e.position.y + (e.userData.hitHeight ?? 1.4),
-      e.position.z
-    );
-
-    aimToCenter.subVectors(aimHitCenter, weaponOrigin);
-    const t = aimToCenter.dot(aimDir);
-    if (t < 0.35 || t > def.range) continue;
-    const closest = tmp.copy(weaponOrigin).addScaledVector(aimDir, t);
-    if (closest.distanceToSquared(aimHitCenter) > hitR * hitR) continue;
-
-    if (t < bestT) {
-      bestT = t;
-      best = e;
-    }
+function damageEnemy(e, def, projectile = false) {
+  if (!e.userData.alive) return false;
+  if (!projectile) {
+    if (state.swingHits.has(e.uuid)) return false;
+    state.swingHits.add(e.uuid);
   }
 
-  if (!best) {
-    shake.add(0.06);
-    return;
-  }
-
-  const e = best;
   e.userData.hp -= def.damage;
   e.userData.hitFlash = 0.25;
 
   aimToCenter.set(e.position.x - player.position.x, 0, e.position.z - player.position.z);
   if (aimToCenter.lengthSq() > 0.001) {
     aimToCenter.normalize();
-    e.position.addScaledVector(aimToCenter, def.style === "spear" ? 2.0 : 1.5);
+    const knock = def.style === "spear" ? 2.0 : def.style === "mace" ? 2.2 : def.style === "gun" ? 0.7 : 1.5;
+    e.position.addScaledVector(aimToCenter, knock);
   }
 
-  spawnBurst(scene, e.position, def.style === "sword" ? 0xf39c12 : 0x6ab04c, 8);
+  spawnBurst(scene, e.position, burstColor(def.style), def.style === "mace" ? 12 : 8);
   spawnFloater(scene, e.position.clone(), `-${def.damage}`, "#ff6b35");
 
   if (e.userData.hp <= 0) {
@@ -469,10 +514,105 @@ function applyAttackHits() {
     showMessage(`${e.userData.label} smashed! +${points}`);
   } else {
     sfxHit();
-    shake.add(0.22);
+    shake.add(def.style === "mace" ? 0.32 : 0.22);
     bumpCombo();
     bumpScore(10);
     showMessage(`Hit ${e.userData.label}!`);
+  }
+  return true;
+}
+
+function collectMeleeTargets(def) {
+  updateAim();
+  getLookDirection(lookFlat);
+  const beam = def.beam ?? 0.6;
+  const minDot = def.coneDot ?? 0.2;
+  const slabMin = player.position.y + 0.15;
+  const slabMax = player.position.y + 6.8;
+  const hits = [];
+
+  for (const e of enemies) {
+    if (!e.userData.alive || state.swingHits.has(e.uuid)) continue;
+    const cap = getHitCapsule(e);
+    if (cap.maxY < slabMin || cap.minY > slabMax) continue;
+
+    const dx = cap.x - player.position.x;
+    const dz = cap.z - player.position.z;
+    const dist = Math.hypot(dx, dz);
+    const reach = def.range + cap.radius * 0.35;
+    if (dist > reach) continue;
+
+    const rayT = rayHitsCapsule(weaponOrigin, aimDir, def.range + cap.radius, cap, beam);
+    const nd = Math.max(dist, 0.001);
+    const facing = (dx * lookFlat.x + dz * lookFlat.z) / nd;
+    const inCone = facing >= minDot && dist <= def.range + cap.radius;
+
+    if (rayT == null && !inCone) continue;
+    hits.push({ e, dist: rayT ?? dist });
+  }
+
+  hits.sort((a, b) => a.dist - b.dist);
+  return hits;
+}
+
+function applyAttackHits() {
+  const def = getEquippedDef();
+  const hits = collectMeleeTargets(def);
+  if (!hits.length) return;
+
+  if (def.cleave) {
+    for (const h of hits) damageEnemy(h.e, def);
+  } else {
+    damageEnemy(hits[0].e, def);
+  }
+  state.hitApplied = true;
+}
+
+function fireJalapeno(def) {
+  updateAim();
+  const bolt = createJalapenoBolt();
+  bolt.position.copy(weaponOrigin);
+  const target = tmp.copy(weaponOrigin).addScaledVector(aimDir, 12);
+  bolt.lookAt(target);
+  scene.add(bolt);
+  projectiles.push({
+    mesh: bolt,
+    vel: aimDir.clone().multiplyScalar(def.projectileSpeed ?? 34),
+    life: 1.05,
+    damage: def.damage,
+    def,
+  });
+}
+
+function clearProjectiles() {
+  for (const p of projectiles) scene.remove(p.mesh);
+  projectiles.length = 0;
+}
+
+function updateProjectiles(dt) {
+  for (let i = projectiles.length - 1; i >= 0; i--) {
+    const p = projectiles[i];
+    p.life -= dt;
+    p.mesh.position.addScaledVector(p.vel, dt);
+    p.mesh.rotation.z += dt * 14;
+
+    let hit = null;
+    for (const e of enemies) {
+      if (!e.userData.alive) continue;
+      const cap = getHitCapsule(e);
+      const dx = p.mesh.position.x - cap.x;
+      const dz = p.mesh.position.z - cap.z;
+      if (dx * dx + dz * dz > (cap.radius + 0.35) * (cap.radius + 0.35)) continue;
+      if (p.mesh.position.y < cap.minY - 0.3 || p.mesh.position.y > cap.maxY + 0.3) continue;
+      hit = e;
+      break;
+    }
+
+    if (hit || p.life <= 0 || p.mesh.position.y < -1) {
+      if (hit) damageEnemy(hit, p.def, true);
+      scene.remove(p.mesh);
+      projectiles.splice(i, 1);
+    }
   }
 }
 
@@ -561,7 +701,7 @@ function applyKey(e, pressed) {
     }
     if (e.code.startsWith("Digit") || e.code.startsWith("Numpad")) {
       const n = parseInt(e.code.replace("Digit", "").replace("Numpad", ""), 10);
-      if (n >= 1 && n <= 4) {
+      if (n >= 1 && n <= HOTBAR_SLOT_IDS.length) {
         equipSlot(n - 1);
         setInventoryOpen(false);
         e.preventDefault();
@@ -589,7 +729,7 @@ function applyKey(e, pressed) {
       : code.startsWith("Numpad")
         ? parseInt(code.replace("Numpad", ""), 10)
         : NaN;
-    if (digit >= 1 && digit <= 4) equipSlot(digit - 1);
+    if (digit >= 1 && digit <= HOTBAR_SLOT_IDS.length) equipSlot(digit - 1);
     else handled = false;
   } else {
     handled = false;
@@ -609,7 +749,11 @@ function clearInput() {
 
 document.addEventListener("keydown", (e) => applyKey(e, true), { passive: false });
 document.addEventListener("keyup", (e) => applyKey(e, false), { passive: false });
-window.addEventListener("blur", clearInput);
+window.addEventListener("blur", () => {
+  if (performance.now() < suppressBlurClearUntil) return;
+  if (document.pointerLockElement === canvas) return;
+  clearInput();
+});
 
 document.addEventListener("mousedown", (e) => {
   if (!state.started || !state.alive || e.button !== 0 || inventory.open) return;
@@ -627,7 +771,7 @@ document.addEventListener("mousemove", (e) => {
 canvas.addEventListener("click", () => {
   if (!state.started || !state.alive || inventory.open) return;
   canvas.focus();
-  if (document.pointerLockElement !== canvas) canvas.requestPointerLock();
+  if (document.pointerLockElement !== canvas) requestGameLock();
 });
 
 document.getElementById("inventory-close").addEventListener("click", () => {
@@ -641,11 +785,18 @@ startBtn.addEventListener("click", (e) => {
   overlay.classList.add("hidden");
   hudEl.classList.remove("hidden");
   crosshairEl.classList.remove("hidden");
+  gameoverEl.classList.add("hidden");
   state.started = true;
+  state.alive = true;
+  state.invuln = 3.6;
+  setHealth(MAX_HP);
+  player.position.set(0, 0, 0);
+  velocity.set(0, 0, 0);
+  grounded = true;
   clearInput();
   canvas.focus();
-  requestAnimationFrame(() => canvas.requestPointerLock?.());
-  showMessage("Desserts are demon food — aim with the crosshair and smash.");
+  requestAnimationFrame(() => requestGameLock());
+  showMessage("Desserts are demon food — aim at them, hop donuts with Space.");
 });
 
 restartBtn.addEventListener("click", (e) => {
@@ -741,12 +892,22 @@ function tick() {
       state.attackT -= dt;
       const progress = 1 - state.attackT / state.attackDuration;
       const def = getEquippedDef();
-      const impactAt = def.style === "sword" ? 0.38 : def.style === "spear" ? 0.32 : 0.22;
-      if (!state.hitApplied && progress >= impactAt) {
-        state.hitApplied = true;
-        applyAttackHits();
+      if (def.style === "gun") {
+        if (!state.didShoot && progress >= 0.08) {
+          state.didShoot = true;
+          fireJalapeno(def);
+        }
+      } else {
+        const hitStart = def.hitStart ?? 0.22;
+        const hitEnd = def.hitEnd ?? 0.72;
+        const canCleave = !!def.cleave;
+        const stillOpen = canCleave || state.swingHits.size === 0;
+        if (stillOpen && progress >= hitStart && progress <= hitEnd) {
+          applyAttackHits();
+        }
       }
       if (state.attackT <= 0) {
+        if (def.style !== "gun" && state.swingHits.size === 0) shake.add(0.05);
         state.attacking = false;
         state.attackT = 0;
         player.userData.leftArm.position.set(-1.05, 3.55, 0);
@@ -755,6 +916,7 @@ function tick() {
     }
 
     updateEnemies(enemies, player.position, dt, onHitPlayer);
+    updateProjectiles(dt);
   } else if (state.started && state.alive) {
     updateAim();
   }
@@ -768,6 +930,7 @@ function tick() {
     attackDuration: state.attackDuration,
     weaponStyle: def.style,
     aimPitch,
+    grounded,
     dt,
   });
 

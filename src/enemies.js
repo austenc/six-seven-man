@@ -35,8 +35,9 @@ function createCarrotCake() {
   g.userData.speed = 5.4;
   g.userData.aggroRange = 30;
   g.userData.label = "Hostile Carrot Cake";
-  g.userData.hitRadius = 0.75;
-  g.userData.hitHeight = 1.35;
+  g.userData.hitRadius = 1.15;
+  g.userData.hitMinY = 0.05;
+  g.userData.hitMaxY = 2.75;
   return g;
 }
 
@@ -57,8 +58,9 @@ function createIceCream() {
   g.userData.speed = 6.5;
   g.userData.aggroRange = 32;
   g.userData.label = "Hostile Ice Cream";
-  g.userData.hitRadius = 0.55;
-  g.userData.hitHeight = 1.7;
+  g.userData.hitRadius = 0.95;
+  g.userData.hitMinY = 0.05;
+  g.userData.hitMaxY = 3.55;
   return g;
 }
 
@@ -81,12 +83,59 @@ function createCookieMonster() {
   g.userData.speed = 4.4;
   g.userData.aggroRange = 28;
   g.userData.label = "Cookie Monster";
-  g.userData.hitRadius = 0.85;
-  g.userData.hitHeight = 1.5;
+  g.userData.hitRadius = 1.35;
+  g.userData.hitMinY = 0.05;
+  g.userData.hitMaxY = 2.85;
   return g;
 }
 
-const BUILDERS = [createCarrotCake, createIceCream, createCookieMonster];
+function createHostileDonut() {
+  const g = new THREE.Group();
+  const body = new THREE.Group();
+  const dough = 0xe8c07a;
+  const frosting = 0xff8fab;
+  const sprinkles = [0xe74c3c, 0x3498db, 0xf1c40f, 0x9b59b6, 0x2ecc71];
+  const R = 0.95;
+
+  for (let i = 0; i < 14; i++) {
+    const a = (i / 14) * Math.PI * 2;
+    const x = Math.cos(a) * R;
+    const y = 1.05 + Math.sin(a) * R;
+    addBlock(body, i % 2 === 0 ? frosting : dough, x, y, 0, 0.5, 0.5, 0.42);
+    if (i % 2 === 0) {
+      addBlock(body, sprinkles[i % sprinkles.length], x * 1.08, y + 0.18, 0.18, 0.14, 0.14, 0.14);
+    }
+  }
+  angryEyes(body, 1.15, 0.28, 0.32);
+  addBlock(body, 0x5c1a1a, 0, 0.72, 0.28, 0.4, 0.12, 0.1);
+  g.add(body);
+
+  g.userData.type = "donut";
+  g.userData.maxHp = 70;
+  g.userData.hp = 70;
+  g.userData.damage = 18;
+  g.userData.speed = 6.8;
+  g.userData.aggroRange = 34;
+  g.userData.label = "Hostile Donut";
+  g.userData.hitRadius = 1.35;
+  g.userData.hitMinY = 0.05;
+  g.userData.hitMaxY = 2.15;
+  g.userData.jumpOverHeight = 1.7;
+  g.userData.rollMesh = body;
+  return g;
+}
+
+const BUILDERS = [createHostileDonut, createCarrotCake, createIceCream, createCookieMonster];
+
+export function getHitCapsule(e) {
+  return {
+    x: e.position.x,
+    z: e.position.z,
+    minY: e.position.y + (e.userData.hitMinY ?? 0.1),
+    maxY: e.position.y + (e.userData.hitMaxY ?? 2.4),
+    radius: e.userData.hitRadius ?? 1.05,
+  };
+}
 
 export function clearEnemies(scene, enemies) {
   for (const e of enemies) {
@@ -101,11 +150,12 @@ export function spawnEnemies(scene, openSpots, count = 18, seed = 67) {
 
   // Guaranteed pack near spawn so it's obvious desserts are enemies
   const nearSpawn = [
-    [22, 6],
-    [-20, 16],
-    [14, -24],
-    [-18, -14],
-    [28, -10],
+    [28, 22],
+    [30, 10],
+    [-28, 20],
+    [18, -30],
+    [-24, -18],
+    [32, -14],
   ];
   for (let i = 0; i < nearSpawn.length; i++) {
     const enemy = BUILDERS[i % BUILDERS.length]();
@@ -132,7 +182,7 @@ export function spawnEnemies(scene, openSpots, count = 18, seed = 67) {
     const radius = 4 + rng() * 12;
     const x = spot.x + Math.cos(angle) * radius;
     const z = spot.z + Math.sin(angle) * radius;
-    if (Math.hypot(x, z) < 28) continue;
+    if (Math.hypot(x, z) < 34) continue;
 
     const enemy = builder();
     enemy.position.set(x, 0, z);
@@ -173,17 +223,24 @@ export function updateEnemies(enemies, playerPos, dt, onHitPlayer) {
 
     e.userData.attackCd = Math.max(0, e.userData.attackCd - dt);
 
+    const contact = e.userData.type === "donut" ? 2.05 : 1.7;
+
     if (dist < aggro) {
-      if (dist > 1.7) {
+      if (dist > contact) {
         toPlayer.normalize();
         e.position.addScaledVector(toPlayer, e.userData.speed * dt);
         e.rotation.y = Math.atan2(toPlayer.x, toPlayer.z);
+        if (e.userData.rollMesh) {
+          e.userData.rollMesh.rotation.x += (e.userData.speed * dt) / 0.9;
+        }
       } else if (e.userData.attackCd <= 0) {
-        onHitPlayer(e.userData.damage, e.userData.label);
-        e.userData.attackCd = 0.75;
-        // Lunge
-        toPlayer.normalize();
-        e.position.addScaledVector(toPlayer, 0.35);
+        const hopOver = e.userData.jumpOverHeight;
+        if (!hopOver || playerPos.y < hopOver) {
+          onHitPlayer(e.userData.damage, e.userData.label);
+          e.userData.attackCd = 0.75;
+          toPlayer.normalize();
+          e.position.addScaledVector(toPlayer, 0.35);
+        }
       }
     } else {
       e.userData.wanderT -= dt;
@@ -194,8 +251,13 @@ export function updateEnemies(enemies, playerPos, dt, onHitPlayer) {
       }
       e.position.addScaledVector(e.userData.wanderDir, e.userData.speed * 0.4 * dt);
       e.rotation.y = Math.atan2(e.userData.wanderDir.x, e.userData.wanderDir.z);
+      if (e.userData.rollMesh) {
+        e.userData.rollMesh.rotation.x += (e.userData.speed * 0.4 * dt) / 0.9;
+      }
     }
 
-    e.position.y = Math.sin(performance.now() * 0.006 + e.position.x) * 0.1;
+    if (!e.userData.rollMesh) {
+      e.position.y = Math.sin(performance.now() * 0.006 + e.position.x) * 0.1;
+    }
   }
 }

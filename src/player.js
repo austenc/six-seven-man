@@ -94,7 +94,7 @@ export function createCarrotSword() {
   Object.assign(g.userData, {
     weaponId: "carrotSword",
     damage: 30,
-    range: 3.5,
+    range: 5.4,
     label: "Carrot Sword",
     style: "sword",
     twoHanded: false,
@@ -115,7 +115,7 @@ export function createAsparagusSpear() {
   Object.assign(g.userData, {
     weaponId: "asparagusSpear",
     damage: 26,
-    range: 5.4,
+    range: 6.6,
     label: "Asparagus Spear",
     style: "spear",
     twoHanded: true,
@@ -124,46 +124,143 @@ export function createAsparagusSpear() {
   return g;
 }
 
+export function createBroccoliMace() {
+  const g = new THREE.Group();
+  addBlock(g, 0x6e4c1e, 0, 0.55, 0, 0.22, 1.15, 0.22);
+  addBlock(g, 0x3d6b1e, 0, 1.25, 0, 0.38, 0.45, 0.38);
+  addBlock(g, 0x2d8a2d, 0, 1.7, 0, 0.95, 0.7, 0.95);
+  addBlock(g, 0x239b23, -0.45, 1.85, 0.2, 0.5, 0.5, 0.5);
+  addBlock(g, 0x1e8449, 0.48, 1.9, -0.15, 0.48, 0.55, 0.48);
+  addBlock(g, 0x27ae60, 0.1, 2.2, 0.25, 0.55, 0.5, 0.55);
+  addBlock(g, 0x196f3d, -0.2, 2.15, -0.35, 0.45, 0.45, 0.45);
+  addBlock(g, 0x52be80, 0.3, 1.55, 0.45, 0.4, 0.4, 0.4);
+  Object.assign(g.userData, {
+    weaponId: "broccoliMace",
+    damage: 42,
+    range: 5.0,
+    label: "Broccoli Mace",
+    style: "mace",
+    twoHanded: true,
+    attackDuration: 0.52,
+  });
+  return g;
+}
+
+export function createJalapenoPopper() {
+  const g = new THREE.Group();
+  addBlock(g, 0x6e4c1e, 0, 0.15, 0.12, 0.2, 0.45, 0.22);
+  addBlock(g, 0x239b23, 0, 0.55, 0, 0.32, 0.7, 0.32);
+  addBlock(g, 0x1e8449, 0, 1.05, 0, 0.26, 0.45, 0.26);
+  addBlock(g, 0xc0392b, 0, 1.4, 0, 0.18, 0.32, 0.18);
+  addBlock(g, 0x145a32, 0.12, 1.62, 0, 0.1, 0.22, 0.1);
+  addBlock(g, 0xf1c40f, 0, 0.7, 0.18, 0.12, 0.12, 0.1);
+  Object.assign(g.userData, {
+    weaponId: "jalapenoPopper",
+    damage: 18,
+    range: 28,
+    label: "Jalapeño Popper",
+    style: "gun",
+    twoHanded: false,
+    attackDuration: 0.28,
+  });
+  return g;
+}
+
+export function createJalapenoBolt() {
+  const g = new THREE.Group();
+  addBlock(g, 0x27ae60, 0, 0, 0.08, 0.16, 0.16, 0.28);
+  addBlock(g, 0x1e8449, 0, 0, 0.32, 0.22, 0.22, 0.32);
+  addBlock(g, 0xc0392b, 0, 0, 0.55, 0.14, 0.14, 0.24);
+  addBlock(g, 0x145a32, 0, 0.12, -0.16, 0.08, 0.16, 0.14);
+  return g;
+}
+
 export const WEAPON_DEFS = {
   fists: {
     id: "fists",
     label: "Fists",
     damage: 14,
-    range: 2.3,
+    range: 2.9,
     style: "fist",
     twoHanded: false,
     attackDuration: 0.26,
+    hitStart: 0.16,
+    hitEnd: 0.72,
+    coneDot: 0.18,
+    beam: 0.55,
     builder: null,
   },
   carrotSword: {
     id: "carrotSword",
     label: "Carrot Sword",
     damage: 30,
-    range: 3.5,
+    range: 5.4,
     style: "sword",
     twoHanded: false,
     attackDuration: 0.38,
+    hitStart: 0.26,
+    hitEnd: 0.78,
+    coneDot: 0.08,
+    beam: 0.95,
     builder: createCarrotSword,
   },
   asparagusSpear: {
     id: "asparagusSpear",
     label: "Asparagus Spear",
     damage: 26,
-    range: 5.4,
+    range: 6.6,
     style: "spear",
     twoHanded: true,
     attackDuration: 0.34,
+    hitStart: 0.22,
+    hitEnd: 0.7,
+    coneDot: 0.42,
+    beam: 0.55,
     builder: createAsparagusSpear,
+  },
+  broccoliMace: {
+    id: "broccoliMace",
+    label: "Broccoli Mace",
+    damage: 42,
+    range: 5.0,
+    style: "mace",
+    twoHanded: true,
+    attackDuration: 0.52,
+    hitStart: 0.4,
+    hitEnd: 0.78,
+    coneDot: -0.15,
+    beam: 1.15,
+    cleave: true,
+    builder: createBroccoliMace,
+  },
+  jalapenoPopper: {
+    id: "jalapenoPopper",
+    label: "Jalapeño Popper",
+    damage: 18,
+    range: 28,
+    style: "gun",
+    twoHanded: false,
+    attackDuration: 0.28,
+    projectileSpeed: 34,
+    builder: createJalapenoPopper,
   },
 };
 
 export const WEAPON_BUILDERS = {
   carrotSword: createCarrotSword,
   asparagusSpear: createAsparagusSpear,
+  broccoliMace: createBroccoliMace,
+  jalapenoPopper: createJalapenoPopper,
 };
 
-/** Hotbar slot layout: 1=Fists, 2=Sword, 3=Spear, 4=empty reserve */
-export const HOTBAR_SLOT_IDS = ["fists", "carrotSword", "asparagusSpear", null];
+/** Hotbar: 1 fists · 2 sword · 3 spear · 4 mace · 5 pepper gun */
+export const HOTBAR_SLOT_IDS = [
+  "fists",
+  "carrotSword",
+  "asparagusSpear",
+  "broccoliMace",
+  "jalapenoPopper",
+];
 
 /**
  * Walk cycle + attack posing.
@@ -171,23 +268,37 @@ export const HOTBAR_SLOT_IDS = ["fists", "carrotSword", "asparagusSpear", null];
  */
 export function updatePlayerAnim(player, opts) {
   const { leftLeg, rightLeg, leftArm, rightArm } = player.userData;
-  const { moving, sprint, attacking, attackT, attackDuration, weaponStyle, dt, aimPitch = 0 } =
-    opts;
+  const {
+    moving,
+    sprint,
+    attacking,
+    attackT,
+    attackDuration,
+    weaponStyle,
+    dt,
+    aimPitch = 0,
+    grounded = true,
+  } = opts;
 
   const ud = player.userData;
-  if (moving && !attacking) {
+  if (moving && !attacking && grounded) {
     const cadence = sprint ? 14 : 10;
     ud.walkPhase += dt * cadence;
   } else if (!attacking) {
     ud.walkPhase *= 1 - Math.min(1, dt * 6);
   }
 
-  const swing = moving && !attacking ? Math.sin(ud.walkPhase) : 0;
-  const legAmp = moving && !attacking ? (sprint ? 0.7 : 0.55) : 0;
-  const armAmp = moving && !attacking ? (sprint ? 0.55 : 0.45) : 0;
+  const swing = moving && !attacking && grounded ? Math.sin(ud.walkPhase) : 0;
+  const legAmp = moving && !attacking && grounded ? (sprint ? 0.7 : 0.55) : 0;
+  const armAmp = moving && !attacking && grounded ? (sprint ? 0.55 : 0.45) : 0;
 
-  leftLeg.rotation.x = swing * legAmp;
-  rightLeg.rotation.x = -swing * legAmp;
+  if (!grounded) {
+    leftLeg.rotation.x = -0.72;
+    rightLeg.rotation.x = -0.5;
+  } else {
+    leftLeg.rotation.x = swing * legAmp;
+    rightLeg.rotation.x = -swing * legAmp;
+  }
 
   // Clamp look pitch contribution so arms stay readable
   const pitch = THREE.MathUtils.clamp(aimPitch, -0.85, 0.95);
@@ -196,18 +307,18 @@ export function updatePlayerAnim(player, opts) {
     const t = 1 - attackT / attackDuration;
     applyAttackPose(leftArm, rightArm, weaponStyle, t, player, pitch);
   } else {
-    applyIdleHoldPose(leftArm, rightArm, weaponStyle, swing, armAmp, player, pitch);
+    applyIdleHoldPose(leftArm, rightArm, weaponStyle, swing, armAmp, player, pitch, grounded);
   }
 }
 
-function applyIdleHoldPose(leftArm, rightArm, style, swing, armAmp, player, pitch) {
+function applyIdleHoldPose(leftArm, rightArm, style, swing, armAmp, player, pitch, grounded) {
   const weaponMesh = player.userData.weaponMesh;
+  const hop = grounded ? 0 : 0.22;
 
   leftArm.position.set(-1.05, 3.55, 0);
   rightArm.position.set(1.05, 3.55, 0);
 
   if (style === "spear") {
-    // Two-handed — arms track crosshair pitch
     const base = -Math.PI * 0.5 - pitch;
     leftArm.rotation.set(base, 0.18, 0.35);
     rightArm.rotation.set(base, -0.18, -0.35);
@@ -218,15 +329,29 @@ function applyIdleHoldPose(leftArm, rightArm, style, swing, armAmp, player, pitc
       weaponMesh.rotation.set(Math.PI, 0, 0);
     }
   } else if (style === "sword") {
-    leftArm.rotation.set(swing * armAmp, 0, 0.08);
-    rightArm.rotation.set(-0.4 - pitch * 0.65 + -swing * armAmp * 0.3, 0, -0.2);
+    leftArm.rotation.set(swing * armAmp - hop, 0, 0.08);
+    rightArm.rotation.set(-0.95 - pitch * 0.85 + -swing * armAmp * 0.25, 0, -0.18);
     if (weaponMesh) {
       weaponMesh.position.set(0.1, 0.05, 0.05);
-      weaponMesh.rotation.set(Math.PI, 0, -0.35);
+      weaponMesh.rotation.set(Math.PI, 0, -0.2);
+    }
+  } else if (style === "mace") {
+    leftArm.rotation.set(-0.55 - pitch * 0.25, 0.1, 0.35);
+    rightArm.rotation.set(-0.7 - pitch * 0.4, -0.08, -0.45);
+    if (weaponMesh) {
+      weaponMesh.position.set(0.12, 0.08, 0.06);
+      weaponMesh.rotation.set(Math.PI, 0, -0.2);
+    }
+  } else if (style === "gun") {
+    leftArm.rotation.set(swing * armAmp * 0.4 - hop, 0, 0.12);
+    rightArm.rotation.set(-Math.PI * 0.5 - pitch, 0, -0.12);
+    if (weaponMesh) {
+      weaponMesh.position.set(0.06, 0.12, 0.08);
+      weaponMesh.rotation.set(Math.PI, 0, 0);
     }
   } else {
-    leftArm.rotation.set(-swing * armAmp, 0, 0.1);
-    rightArm.rotation.set(swing * armAmp - pitch * 0.35, 0, -0.1);
+    leftArm.rotation.set(-swing * armAmp - hop, 0, 0.1);
+    rightArm.rotation.set(swing * armAmp - pitch * 0.35 - hop, 0, -0.1);
   }
 }
 
@@ -275,6 +400,35 @@ function applyAttackPose(leftArm, rightArm, style, t, player, pitch) {
       weaponMesh.position.set(-1.0, 0.55 + thrust * 0.15, 0.05);
       weaponMesh.rotation.set(Math.PI, 0, 0);
     }
+  } else if (style === "mace") {
+    let smash;
+    if (t < 0.38) {
+      smash = THREE.MathUtils.lerp(-0.55, -Math.PI * 1.05, t / 0.38);
+    } else if (t < 0.62) {
+      const u = (t - 0.38) / 0.24;
+      const eased = u * u * (3 - 2 * u);
+      smash = THREE.MathUtils.lerp(-Math.PI * 1.05, 0.15 - pitch * 0.4, eased);
+    } else {
+      smash = THREE.MathUtils.lerp(0.15 - pitch * 0.4, -0.7, (t - 0.62) / 0.38);
+    }
+    leftArm.position.set(-1.05, 3.55, 0);
+    rightArm.position.set(1.05, 3.55, 0);
+    leftArm.rotation.set(smash * 0.85, 0.12, 0.4);
+    rightArm.rotation.set(smash, -0.1, -0.4);
+    if (weaponMesh) {
+      weaponMesh.position.set(0.12, 0.08, 0.06);
+      weaponMesh.rotation.set(Math.PI, 0, -0.15);
+    }
+  } else if (style === "gun") {
+    const kick = t < 0.22 ? t / 0.22 : 1 - (t - 0.22) / 0.78;
+    leftArm.position.set(-1.05, 3.55, 0);
+    rightArm.position.set(1.05, 3.55, -kick * 0.28);
+    leftArm.rotation.set(0.2, 0, 0.15);
+    rightArm.rotation.set(-Math.PI * 0.5 - pitch + kick * 0.18, 0, -0.12);
+    if (weaponMesh) {
+      weaponMesh.position.set(0.06, 0.12, 0.08);
+      weaponMesh.rotation.set(Math.PI, 0, 0);
+    }
   } else {
     const u = t < 0.45 ? t / 0.45 : 1 - (t - 0.45) / 0.55;
     const jab = THREE.MathUtils.lerp(0, -Math.PI * 0.7 - pitch, u);
@@ -304,13 +458,17 @@ export function attachWeaponMeshes(player, def) {
   player.userData.weaponMesh = mesh;
   rightHand.add(mesh);
 
-  if (def.twoHanded) {
-    // Tip along -Y so when arms raise forward it points at the enemy
+  if (def.style === "spear") {
     mesh.rotation.set(Math.PI, 0, 0);
     mesh.position.set(-1.0, 0.55, 0.05);
+  } else if (def.style === "gun") {
+    mesh.rotation.set(Math.PI, 0, 0);
+    mesh.position.set(0.06, 0.12, 0.08);
+  } else if (def.style === "mace") {
+    mesh.rotation.set(Math.PI, 0, -0.2);
+    mesh.position.set(0.12, 0.08, 0.06);
   } else {
-    // Sword tip past fingers (-Y); raises skyward on overhead swing
-    mesh.rotation.set(Math.PI, 0, -0.35);
+    mesh.rotation.set(Math.PI, 0, -0.2);
     mesh.position.set(0.1, 0.05, 0.05);
   }
 }

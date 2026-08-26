@@ -102,6 +102,13 @@ export function sfxSwing(style = "fist") {
   } else if (style === "spear") {
     noiseBurst(0.1, 0.18, 900);
     tone(140, 0.12, "triangle", 0.12);
+  } else if (style === "mace") {
+    noiseBurst(0.18, 0.28, 400);
+    tone(90, 0.14, "square", 0.16);
+  } else if (style === "gun") {
+    noiseBurst(0.09, 0.24, 2200);
+    tone(520, 0.07, "square", 0.14);
+    tone(180, 0.08, "sawtooth", 0.1);
   } else {
     noiseBurst(0.08, 0.14, 700);
   }

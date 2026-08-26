@@ -190,9 +190,9 @@ body {
 }
 
 .hotbar-slot {
-  width: 84px;
+  width: 78px;
   min-height: 58px;
-  padding: 0.35rem 0.4rem;
+  padding: 0.35rem 0.35rem;
   background: rgba(26, 21, 32, 0.82);
   border: 3px solid #6d6358;
   display: flex;
@@ -217,7 +217,7 @@ body {
 }
 
 .slot-name {
-  font-size: 0.72rem;
+  font-size: 0.64rem;
   font-weight: 700;
   line-height: 1.2;
 }

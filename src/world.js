@@ -121,6 +121,9 @@ export function generateCity(scene, seed = 67) {
     }
   }
 
+  crates.push(addCrate(scene, 3.2, 2.4));
+  crates.push(addCrate(scene, -3.4, 3.0));
+
   return {
     colliders,
     openSpots,
